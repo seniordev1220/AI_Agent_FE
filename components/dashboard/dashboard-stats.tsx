@@ -33,9 +33,9 @@ export function DashboardStats() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* TOP AI Agents Used */}
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col h-[200px]">
           <h3 className="text-lg font-medium mb-4">TOP AI Agents Used</h3>
-          <div className="space-y-3">
+          <div className="space-y-3 flex-grow">
             <div className="flex justify-between">
               <span>Sales Support Agent</span>
               <span>892435</span>
@@ -49,28 +49,28 @@ export function DashboardStats() {
               <span>432</span>
             </div>
           </div>
-          <a href="#" className="text-blue-500 block mt-4">View More</a>
+          <a href="#" className="text-blue-500 mt-auto">View More</a>
         </div>
 
         {/* Users */}
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col h-[200px]">
           <h3 className="text-lg font-medium mb-4">Users</h3>
-          <div className="text-4xl font-bold">5</div>
-          <a href="#" className="text-blue-500 block mt-4">View More</a>
+          <div className="text-4xl font-bold flex-grow">5</div>
+          <a href="#" className="text-blue-500 mt-auto">View More</a>
         </div>
 
         {/* Token Usage */}
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col h-[200px]">
           <h3 className="text-lg font-medium mb-4">Estimated Token Usage</h3>
-          <div className="text-4xl font-bold">101,796,304</div>
-          <a href="#" className="text-blue-500 block mt-4">View More</a>
+          <div className="text-4xl font-bold flex-grow">101,796,304</div>
+          <a href="#" className="text-blue-500 mt-auto">View More</a>
         </div>
 
         {/* Message Activity */}
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col h-[200px]">
           <h3 className="text-lg font-medium mb-4">Message Activity</h3>
-          <div className="text-4xl font-bold">94852</div>
-          <a href="#" className="text-blue-500 block mt-4">View More</a>
+          <div className="text-4xl font-bold flex-grow">94852</div>
+          <a href="#" className="text-blue-500 mt-auto">View More</a>
         </div>
       </div>
 
