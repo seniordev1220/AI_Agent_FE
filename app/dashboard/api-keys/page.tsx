@@ -41,6 +41,8 @@ interface ApiKey {
   provider: string
   key: string
   logo: string
+  prefix?: string
+  keyLength: number
 }
 
 export default function ApiKeysPage() {
@@ -48,12 +50,48 @@ export default function ApiKeysPage() {
   const [currentProvider, setCurrentProvider] = useState<string>('')
   const [newApiKey, setNewApiKey] = useState('')
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([
-    { provider: 'OpenAI', key: 'zk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', logo: '/model_logo/openai-logo.png' },
-    { provider: 'Google Gemini', key: 'zk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', logo: '/model_logo/gemini-logo.png' },
-    { provider: 'Anthropic', key: 'zk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', logo: '/model_logo/anthropic-logo.png' },
-    { provider: 'Hugging Face', key: 'zk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', logo: '/model_logo/hf-logo.png' },
-    { provider: 'DeepSeek', key: 'zk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', logo: '/model_logo/deepseek-logo.png' },
-    { provider: 'Perplexity', key: 'zk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', logo: '/model_logo/perplexity-logo.png' },
+    { 
+      provider: 'OpenAI', 
+      key: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      logo: '/model_logo/openai-logo.png',
+      prefix: 'sk-',
+      keyLength: 51
+    },
+    {
+      provider: 'Gemini',
+      key: 'AIzaSyA-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      logo: '/model_logo/google-logo.png',
+      prefix: 'AIzaSyA-',
+      keyLength: 39
+    },
+    { 
+      provider: 'DeepSeek', 
+      key: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      logo: '/model_logo/deepseek-logo.png',
+      prefix: 'sk-',
+      keyLength: 48
+    },
+    { 
+      provider: 'Anthropic', 
+      key: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      logo: '/model_logo/anthropic-logo.png',
+      prefix: '',
+      keyLength: 32
+    },
+    { 
+      provider: 'Hugging Face', 
+      key: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      logo: '/model_logo/hf-logo.png',
+      prefix: '',
+      keyLength: 37
+    },
+    { 
+      provider: 'Perplexity', 
+      key: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      logo: '/model_logo/perplexity-logo.png',
+      prefix: '',
+      keyLength: 32
+    },
   ])
 
   const handleUpdateKey = (provider: string) => {
@@ -64,18 +102,33 @@ export default function ApiKeysPage() {
 
   const handleSaveKey = () => {
     if (newApiKey) {
-      setApiKeys(keys => keys.map(k => 
-        k.provider === currentProvider 
-          ? { ...k, key: maskApiKey(newApiKey) }
-          : k
-      ))
-      setIsDialogOpen(false)
+      const apiKey = apiKeys.find(k => k.provider === currentProvider)
+      if (apiKey && isValidApiKey(newApiKey, apiKey)) {
+        setApiKeys(keys => keys.map(k => 
+          k.provider === currentProvider 
+            ? { ...k, key: maskApiKey(newApiKey, k) }
+            : k
+        ))
+        setIsDialogOpen(false)
+      } else {
+        // You might want to show an error message here
+        alert(`Invalid API key format for ${currentProvider}`)
+      }
     }
   }
 
-  const maskApiKey = (key: string) => {
-    if (key.length <= 2) return key
-    return key.substring(0, 2) + 'x'.repeat(key.length - 2)
+  const isValidApiKey = (key: string, apiKey: ApiKey): boolean => {
+    if (apiKey.prefix && !key.startsWith(apiKey.prefix)) {
+      return false
+    }
+    return key.length === apiKey.keyLength
+  }
+
+  const maskApiKey = (key: string, apiKey: ApiKey): string => {
+    if (apiKey.prefix) {
+      return apiKey.prefix + 'x'.repeat(apiKey.keyLength - apiKey.prefix.length)
+    }
+    return 'x'.repeat(apiKey.keyLength)
   }
 
   return (
