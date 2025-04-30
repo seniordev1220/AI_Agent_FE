@@ -34,23 +34,16 @@ export function Sidebar({ className }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile Menu Toggle Button */}
+      {/* Mobile Menu Toggle Button - Updated color to match header */}
       {isMobile && (
         <button
-          className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-white shadow-sm hover:bg-gray-50"
+          className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-sm border border-gray-200"
           onClick={() => setIsOpen(!isOpen)}
-          style={{
-            width: '40px',
-            height: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
         >
           {isOpen ? (
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6 text-gray-600" />
           ) : (
-            <Menu className="h-5 w-5" />
+            <Menu className="h-6 w-6 text-gray-600" />
           )}
         </button>
       )}

@@ -18,23 +18,23 @@ export function Header() {
   }, [])
 
   return (
-    <header className="border-b border-gray-200 bg-white">
+    <header className="border-b border-gray-200 bg-white shadow-sm">
       <div className="flex h-16 items-center px-4 md:px-6">
         {/* Mobile View */}
         {isMobile ? (
           <div className="flex w-full items-center justify-between">
-            <div className="flex items-center gap-2">
-              <UserNav />
-              <span className="text-gray-600">
-                {session?.user?.name?.split(" ")[0] || "Guest"}
-              </span>
-            </div>
             <a 
               href="/book-call" 
               className="text-blue-600 hover:underline text-sm whitespace-nowrap"
             >
               Book a call
             </a>
+            <div className="flex items-center gap-2">
+              <UserNav />
+              <span className="text-gray-600">
+                {session?.user?.name?.split(" ")[0] || "Guest"}
+              </span>
+            </div>
           </div>
         ) : (
           /* Desktop View */
