@@ -52,15 +52,13 @@ export function Sidebar({ className }: SidebarProps) {
       <aside
         className={`
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          ${isMobile ? 'fixed top-0 left-0' : 'relative'}
+          ${isMobile ? 'fixed top-0 left-0 h-full' : 'sticky top-0 h-screen'}
           w-64 bg-white border-r flex flex-col z-40
           transition-transform duration-300 ease-in-out
-          max-h-screen overflow-y-auto
           ${className || ''}
         `}
-        style={{ height: isMobile ? '100%' : '100vh' }}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col min-h-full">
           <SidebarSection>
             <Logo />
             <button 
@@ -70,9 +68,9 @@ export function Sidebar({ className }: SidebarProps) {
               + New Chat
             </button>
           </SidebarSection>
-          <div className="flex-1 overflow-y-auto">
+          <nav className="flex-1 overflow-y-auto">
             <SidebarNavList items={sidebarNav} />
-          </div>
+          </nav>
         </div>
       </aside>
 
