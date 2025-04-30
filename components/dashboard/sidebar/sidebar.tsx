@@ -37,13 +37,20 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Mobile Menu Toggle Button */}
       {isMobile && (
         <button
-          className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md"
+          className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-white shadow-sm hover:bg-gray-50"
           onClick={() => setIsOpen(!isOpen)}
+          style={{
+            width: '40px',
+            height: '40px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           {isOpen ? (
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           ) : (
-            <Menu className="h-6 w-6" />
+            <Menu className="h-5 w-5" />
           )}
         </button>
       )}
