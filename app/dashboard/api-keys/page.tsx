@@ -60,7 +60,7 @@ export default function ApiKeysPage() {
     {
       provider: 'Gemini',
       key: 'AIzaSyA-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      logo: '/model_logo/google-logo.png',
+      logo: '/model_logo/gemini-logo.png',
       prefix: 'AIzaSyA-',
       keyLength: 39
     },
