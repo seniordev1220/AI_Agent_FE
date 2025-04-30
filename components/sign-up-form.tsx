@@ -114,11 +114,21 @@ export function SignUpForm() {
           <Checkbox id="terms" checked={formData.agreedToTerms} onCheckedChange={handleCheckboxChange} required />
           <Label htmlFor="terms" className="text-sm font-normal leading-none">
             I have read and agree to the{" "}
-            <Link href="https://www.finiite.com/terms" className="text-blue-500 hover:underline">
+            <Link 
+              href="https://www.finiite.com/terms" 
+              className="text-blue-500 hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Terms of Service
             </Link>{" "}
             &{" "}
-            <Link href="https://www.finiite.com/privacy-policy-services" className="text-blue-500 hover:underline">
+            <Link 
+              href="https://www.finiite.com/privacy-policy-services" 
+              className="text-blue-500 hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Privacy Policy
             </Link>{" "}
             by Finiite Technologies Inc.
