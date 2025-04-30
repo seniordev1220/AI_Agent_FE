@@ -154,7 +154,7 @@ export default function ApiKeysPage() {
                 variant="outlined"
                 onClick={() => handleUpdateKey(apiKey.provider)}
               >
-                Update key
+                Set key
               </GetKeyButton>
             </KeyRow>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
