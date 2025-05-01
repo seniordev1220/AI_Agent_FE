@@ -110,6 +110,11 @@ export function SignUpForm() {
           <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input id="password" name="password" type="password" value={formData.password} onChange={handleChange} required />
+        </div>
+
         <div className="flex items-start space-x-2">
           <Checkbox id="terms" checked={formData.agreedToTerms} onCheckedChange={handleCheckboxChange} required />
           <Label htmlFor="terms" className="text-sm font-normal leading-none">
