@@ -34,7 +34,7 @@ export function Sidebar({ className }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile Menu Toggle Button - Updated color to match header */}
+      {/* Mobile Menu Toggle Button */}
       {isMobile && (
         <button
           className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-sm border border-gray-200"
@@ -52,14 +52,14 @@ export function Sidebar({ className }: SidebarProps) {
       <aside
         className={`
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          ${isMobile ? 'fixed top-0 left-0 h-full' : 'sticky top-0 h-screen'}
+          ${isMobile ? 'fixed top-0 left-0 h-full pt-16' : 'sticky top-0 h-screen'} 
           w-64 bg-white border-r flex flex-col z-40
           transition-transform duration-300 ease-in-out
           ${className || ''}
         `}
       >
         <div className="flex flex-col min-h-full">
-          <SidebarSection>
+          <SidebarSection className="flex-shrink-0">
             <Logo />
             <button 
               className="w-full mt-4 mb-2 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-cyan-400 text-white font-semibold text-base flex items-center justify-center"
