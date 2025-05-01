@@ -10,6 +10,8 @@ const KeyContainer = styled(Paper)(({ theme }) => ({
   marginBottom: theme.spacing(3),
   backgroundColor: theme.palette.background.default,
   borderRadius: theme.shape.borderRadius,
+  width: '100%',
+  overflow: 'hidden',
 }))
 
 const KeyRow = styled(Box)(({ theme }) => ({
@@ -60,7 +62,7 @@ export default function ApiKeysPage() {
     {
       provider: 'Gemini',
       key: 'AIzaSyA-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      logo: '/model_logo/gemini-logo.png',
+      logo: '/model_logo/google-logo.png',
       prefix: 'AIzaSyA-',
       keyLength: 39
     },
@@ -154,14 +156,27 @@ export default function ApiKeysPage() {
                 variant="outlined"
                 onClick={() => handleUpdateKey(apiKey.provider)}
               >
-                Set key
+                Update key
               </GetKeyButton>
             </KeyRow>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ApiKeyText>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1,
+              width: '100%',
+              overflow: 'hidden'
+            }}>
+              <ApiKeyText sx={{ 
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
                 {apiKey.key}
               </ApiKeyText>
-              <CheckCircleOutlineIcon color="success" />
+              <CheckCircleOutlineIcon 
+                color="success" 
+                sx={{ flexShrink: 0 }}
+              />
             </Box>
           </KeyContainer>
         ))}
