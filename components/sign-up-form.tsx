@@ -18,6 +18,7 @@ export function SignUpForm() {
     firstName: "",
     lastName: "",
     email: "",
+    password: "",
     agreedToTerms: false,
   })
   const [isLoading, setIsLoading] = useState(false)
