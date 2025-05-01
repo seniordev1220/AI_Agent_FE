@@ -5,7 +5,7 @@ import { SidebarSection } from "./sidebarSection";
 import { SidebarNavList } from "./sidebarNavList";
 import { sidebarNav } from "./sidebarData";
 import { Logo } from "@/components/ui/logo";
-import { Menu, X } from "lucide-react"; // Import icons for the menu toggle
+import { Menu } from "lucide-react"; // Remove X icon import
 
 interface SidebarProps {
   className?: string;
@@ -34,17 +34,13 @@ export function Sidebar({ className }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile Menu Toggle Button */}
+      {/* Mobile Menu Toggle Button - Only show hamburger menu */}
       {isMobile && (
         <button
           className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-sm border border-gray-200"
           onClick={() => setIsOpen(!isOpen)}
         >
-          {isOpen ? (
-            <X className="h-6 w-6 text-gray-600" />
-          ) : (
-            <Menu className="h-6 w-6 text-gray-600" />
-          )}
+          <Menu className="h-6 w-6 text-gray-600" />
         </button>
       )}
 
