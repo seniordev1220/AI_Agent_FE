@@ -28,7 +28,7 @@ const models: Model[] = [
   { name: 'GPT-4o Mini', logo: '/model_logo/gpt4-mini-logo.png', enabled: false },
   { name: 'Claude-3.5', logo: '/model_logo/anthropic-logo.png', enabled: true },
   { name: 'Claude-3.7', logo: '/model_logo/anthropic-logo.png', enabled: true },
-  { name: 'Gemini', logo: '/model_logo/gemini-logo.png', enabled: false },
+  { name: 'Gemini', logo: '/model_logo/google-logo.png', enabled: false },
   { name: 'Mistral', logo: '/model_logo/mistral-logo.png', enabled: false },
 ]
 
