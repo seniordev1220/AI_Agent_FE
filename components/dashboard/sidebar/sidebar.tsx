@@ -34,11 +34,11 @@ export function Sidebar({ className }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile Menu Toggle Button - Only show hamburger menu */}
-      {isMobile && (
+      {/* Mobile Menu Toggle Button - Only show when sidebar is closed */}
+      {isMobile && !isOpen && (
         <button
           className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-sm border border-gray-200"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => setIsOpen(true)}
         >
           <Menu className="h-6 w-6 text-gray-600" />
         </button>
