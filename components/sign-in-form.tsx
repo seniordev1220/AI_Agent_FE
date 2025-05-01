@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowRight } from "lucide-react"
 import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Logo } from "@/components/ui/logo"
+import { toast } from "sonner"
 
 export function SignInForm() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -26,8 +28,28 @@ export function SignInForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Form submitted:", formData)
-    // Handle form submission logic here
+    setIsLoading(true)
+
+    try {
+      const result = await signIn("credentials", {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      })
+
+      if (result?.error) {
+        throw new Error(result.error)
+      }
+
+      // Redirect to dashboard on success
+      router.push("/dashboard")
+      toast.success("Successfully signed in!")
+    } catch (error) {
+      console.error("Sign-in error:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to sign in")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleGoogleSignIn = async () => {
@@ -36,6 +58,7 @@ export function SignInForm() {
       await signIn("google", { callbackUrl: "/dashboard" })
     } catch (error) {
       console.error("Google sign-in error:", error)
+      toast.error("Failed to sign in with Google")
     } finally {
       setIsLoading(false)
     }
@@ -88,7 +111,14 @@ export function SignInForm() {
       <form onSubmit={handleSubmit} className="w-full space-y-6">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
+          <Input 
+            id="email" 
+            name="email" 
+            type="email" 
+            value={formData.email} 
+            onChange={handleChange} 
+            required 
+          />
         </div>
 
         <div className="space-y-2">
@@ -111,9 +141,10 @@ export function SignInForm() {
         <Button
           type="submit"
           className="w-full bg-gradient-to-r from-purple-500 to-cyan-400 hover:from-purple-600 hover:to-cyan-500"
+          disabled={isLoading}
         >
           <span className="flex items-center justify-center gap-2">
-            Sign in <ArrowRight className="h-4 w-4" />
+            {isLoading ? "Signing in..." : "Sign in"} <ArrowRight className="h-4 w-4" />
           </span>
         </Button>
 

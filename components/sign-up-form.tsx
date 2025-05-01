@@ -1,9 +1,8 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowRight } from "lucide-react"
 import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -12,8 +11,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Logo } from "@/components/ui/logo"
+import { toast } from "sonner"
 
 export function SignUpForm() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -28,14 +29,61 @@ export function SignUpForm() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleCheckboxChange = (checked: boolean) => {
-    setFormData((prev) => ({ ...prev, agreedToTerms: checked }))
+  const handleCheckboxChange = (checked: boolean | string) => {
+    setFormData((prev) => ({ ...prev, agreedToTerms: checked === true }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Form submitted:", formData)
-    // Handle form submission logic here
+    
+    if (!formData.agreedToTerms) {
+      toast.error("Please agree to the Terms of Service and Privacy Policy")
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      // Sign up request
+      const signUpResponse = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+        }),
+      })
+
+      const data = await signUpResponse.json()
+
+      if (!signUpResponse.ok) {
+        throw new Error(data.error || data.detail || 'Failed to sign up')
+      }
+
+      // After successful signup, automatically log in
+      const result = await signIn("credentials", {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      })
+
+      if (result?.error) {
+        throw new Error(result.error)
+      }
+
+      // Redirect to dashboard on success
+      router.push("/dashboard")
+      toast.success("Successfully signed up!")
+      
+    } catch (error) {
+      console.error('Signup error:', error)
+      toast.error(error instanceof Error ? error.message : "Failed to sign up")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleGoogleSignUp = async () => {
@@ -43,7 +91,7 @@ export function SignUpForm() {
     try {
       await signIn("google", { callbackUrl: "/dashboard" })
     } catch (error) {
-      console.error("Google sign-up error:", error)
+      toast.error("Failed to sign up with Google")
     } finally {
       setIsLoading(false)
     }
@@ -98,26 +146,56 @@ export function SignUpForm() {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="firstName">First name</Label>
-            <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} required />
+            <Input 
+              id="firstName" 
+              name="firstName" 
+              value={formData.firstName} 
+              onChange={handleChange} 
+              required 
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="lastName">Last name</Label>
-            <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} required />
+            <Input 
+              id="lastName" 
+              name="lastName" 
+              value={formData.lastName} 
+              onChange={handleChange} 
+              required 
+            />
           </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
+          <Input 
+            id="email" 
+            name="email" 
+            type="email" 
+            value={formData.email} 
+            onChange={handleChange} 
+            required 
+          />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" value={formData.password} onChange={handleChange} required />
+          <Input 
+            id="password" 
+            name="password" 
+            type="password" 
+            value={formData.password} 
+            onChange={handleChange} 
+            required 
+          />
         </div>
 
         <div className="flex items-start space-x-2">
-          <Checkbox id="terms" checked={formData.agreedToTerms} onCheckedChange={handleCheckboxChange} required />
+          <Checkbox 
+            id="terms" 
+            checked={formData.agreedToTerms} 
+            onCheckedChange={handleCheckboxChange}
+          />
           <Label htmlFor="terms" className="text-sm font-normal leading-none">
             I have read and agree to the{" "}
             <Link 
@@ -144,9 +222,10 @@ export function SignUpForm() {
         <Button
           type="submit"
           className="w-full bg-gradient-to-r from-purple-500 to-cyan-400 hover:from-purple-600 hover:to-cyan-500"
+          disabled={isLoading}
         >
           <span className="flex items-center justify-center gap-2">
-            start <ArrowRight className="h-4 w-4" />
+            {isLoading ? "Signing up..." : "start"} <ArrowRight className="h-4 w-4" />
           </span>
         </Button>
 
