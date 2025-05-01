@@ -55,7 +55,7 @@ export function Sidebar({ className }: SidebarProps) {
         `}
       >
         <div className="flex flex-col min-h-full">
-          <SidebarSection className="flex-shrink-0">
+          <SidebarSection>
             <Logo />
             <button 
               className="w-full mt-4 mb-2 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-cyan-400 text-white font-semibold text-base flex items-center justify-center"
