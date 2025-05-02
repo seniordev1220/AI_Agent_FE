@@ -37,8 +37,8 @@ export function SignInForm() {
         redirect: false,
       })
 
-      if (result?.error) {
-        throw new Error(result.error)
+      if (!result?.ok) {
+        throw new Error(result?.error || "Failed to sign in")
       }
 
       // Redirect to dashboard on success
