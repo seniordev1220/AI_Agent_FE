@@ -23,20 +23,20 @@ interface Model {
 }
 
 const models: Model[] = [
-  { name: 'GPT-4.5', logo: '/model_logo/openai-logo.png', enabled: true },
-  { name: 'O1-mini', logo: '/model_logo/gpt4-mini-logo.png', enabled: false },
-  { name: 'GPT-4o Mini', logo: '/model_logo/gpt4-mini-logo.png', enabled: false },
-  { name: 'Claude-3.5', logo: '/model_logo/anthropic-logo.png', enabled: true },
-  { name: 'Claude-3.7', logo: '/model_logo/anthropic-logo.png', enabled: true },
-  { name: 'Gemini', logo: '/model_logo/google-logo.png', enabled: false },
-  { name: 'Mistral', logo: '/model_logo/mistral-logo.png', enabled: false },
+  { name: 'GPT-4.5', logo: '/model_logo/openai-logo.svg', enabled: true },
+  { name: 'O1-mini', logo: '/model_logo/gpt4-mini-logo.svg', enabled: false },
+  { name: 'GPT-4o Mini', logo: '/model_logo/gpt4-mini-logo.svg', enabled: false },
+  { name: 'Claude-3.5', logo: '/model_logo/anthropic-logo.svg', enabled: true },
+  { name: 'Claude-3.7', logo: '/model_logo/anthropic-logo.svg', enabled: true },
+  { name: 'Gemini', logo: '/model_logo/google-logo.svg', enabled: false },
+  { name: 'Mistral', logo: '/model_logo/mistral-logo.svg', enabled: false },
 ]
 
 const openSourcedModels: Model[] = [
-  { name: 'Hugging Face', logo: '/model_logo/hf-logo.png', enabled: false },
-  { name: 'DeepSeek', logo: '/model_logo/deepseek-logo.png', enabled: false },
-  { name: 'Perplexity AI', logo: '/model_logo/perplexity-logo.png', enabled: false },
-  { name: 'Meta: llama. 3.2 1B', logo: '/model_logo/meta-logo.png', enabled: false },
+  { name: 'Hugging Face', logo: '/model_logo/hf-logo.svg', enabled: false },
+  { name: 'DeepSeek', logo: '/model_logo/deepseek-logo.svg', enabled: false },
+  { name: 'Perplexity AI', logo: '/model_logo/perplexity-logo.svg', enabled: false },
+  { name: 'Meta: llama. 3.2 1B', logo: '/model_logo/meta-logo.svg', enabled: false },
 ]
 
 export default function ModelsPage() {

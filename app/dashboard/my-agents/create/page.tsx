@@ -348,7 +348,8 @@ You will help analyze information, and provide advice to boost company revenue."
               p: 2
             }}>
               {knowledgeBaseData.map((item) => (
-                <Box
+          
+          <Box
                   key={item.id}
                   sx={{
                     display: 'flex',

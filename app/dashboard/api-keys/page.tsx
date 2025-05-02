@@ -55,42 +55,42 @@ export default function ApiKeysPage() {
     { 
       provider: 'OpenAI', 
       key: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      logo: '/model_logo/openai-logo.png',
+      logo: '/model_logo/openai-logo.svg',
       prefix: 'sk-',
       keyLength: 51
     },
     {
       provider: 'Gemini',
       key: 'AIzaSyA-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      logo: '/model_logo/google-logo.png',
+      logo: '/model_logo/google-logo.svg',
       prefix: 'AIzaSyA-',
       keyLength: 39
     },
     { 
       provider: 'DeepSeek', 
       key: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      logo: '/model_logo/deepseek-logo.png',
+      logo: '/model_logo/deepseek-logo.svg',
       prefix: 'sk-',
       keyLength: 48
     },
     { 
       provider: 'Anthropic', 
       key: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      logo: '/model_logo/anthropic-logo.png',
+      logo: '/model_logo/anthropic-logo.svg',
       prefix: '',
       keyLength: 32
     },
     { 
       provider: 'Hugging Face', 
       key: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      logo: '/model_logo/hf-logo.png',
+      logo: '/model_logo/hf-logo.svg',
       prefix: '',
       keyLength: 37
     },
     { 
       provider: 'Perplexity', 
       key: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      logo: '/model_logo/perplexity-logo.png',
+      logo: '/model_logo/perplexity-logo.svg',
       prefix: '',
       keyLength: 32
     },

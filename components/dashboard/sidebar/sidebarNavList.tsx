@@ -1,10 +1,8 @@
 // components/dashboard/sidebar/SidebarNavList.tsx
 import { SidebarNavItem } from "./sidebarNavItem";
 import { sidebarNav, automationNav, bottomNav } from "./sidebarData";
-import { SidebarAgentsSection } from "./sidebarAgentsSection";
 
 export function SidebarNavList({ items }: { items: { label: string, icon: string, href: string }[] }) {
-  
   return (
     <nav className="flex flex-col h-full">  {/* Added h-full to ensure full height */}
       {/* Main navigation */}
