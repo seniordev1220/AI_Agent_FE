@@ -1,195 +1,385 @@
 "use client"
-import { Box, Typography, Button, Card, Switch, styled, Select, MenuItem, FormControl, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
-import Image from 'next/image'
-import React from 'react'
+import { Box, Typography, Button, TextField, Switch, Select, MenuItem, FormControl, InputLabel } from '@mui/material'
+import { styled } from '@mui/material/styles'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
+import { useState } from 'react'
+import AddIcon from '@mui/icons-material/Add'
+import FolderIcon from '@mui/icons-material/Folder'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import CheckIcon from '@mui/icons-material/Check'
 
-const ModelCard = styled(Card)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  padding: theme.spacing(2),
-  gap: theme.spacing(2),
+const StyledSection = styled(Box)(({ theme }) => ({
+  marginBottom: theme.spacing(4),
+  '& .section-title': {
+    fontWeight: 500,
+    marginBottom: theme.spacing(3),
+  },
+}))
+
+const ActionButton = styled(Button)(({ theme }) => ({
+  height: 48,
+  minWidth: 120,
+}))
+
+const ImageUploadButton = styled(Box)(({ theme }) => ({
+  width: 100,
+  height: 100,
+  borderRadius: '50%',
   backgroundColor: theme.palette.background.paper,
-  border: `1px solid ${theme.palette.divider}`,
-  boxShadow: 'none',
+  border: `1px dashed ${theme.palette.divider}`,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
   '&:hover': {
     backgroundColor: theme.palette.action.hover,
   },
 }))
 
-interface Model {
+interface KnowledgeBaseItem {
+  id: string
   name: string
-  logo: string
-  enabled: boolean
+  type: 'folder' | 'file'
+  children?: KnowledgeBaseItem[]
+  selected?: boolean
 }
 
-const models: Model[] = [
-  { name: 'GPT-4.5', logo: '/model_logo/openai-logo.svg', enabled: true },
-  { name: 'O1-mini', logo: '/model_logo/gpt4-mini-logo.svg', enabled: false },
-  { name: 'GPT-4o Mini', logo: '/model_logo/gpt4-mini-logo.svg', enabled: false },
-  { name: 'Claude-3.5', logo: '/model_logo/anthropic-logo.svg', enabled: true },
-  { name: 'Claude-3.7', logo: '/model_logo/anthropic-logo.svg', enabled: true },
-  { name: 'Gemini', logo: '/model_logo/google-logo.svg', enabled: false },
-  { name: 'Mistral', logo: '/model_logo/mistral-logo.svg', enabled: false },
+const knowledgeBaseData: KnowledgeBaseItem[] = [
+  {
+    id: '1',
+    name: 'Internal Documents',
+    type: 'folder',
+    children: [],
+    selected: true
+  },
+  {
+    id: '2',
+    name: 'Meeting Notes',
+    type: 'folder',
+    children: [],
+  },
+  {
+    id: '3',
+    name: 'Product Documents',
+    type: 'folder',
+    children: [],
+  },
+  {
+    id: '4',
+    name: 'Marketing Documents',
+    type: 'folder',
+    children: [],
+  },
+  {
+    id: '5',
+    name: 'Recruiting Documents',
+    type: 'folder',
+    children: [],
+  },
+  {
+    id: '6',
+    name: 'Human Resources Documents',
+    type: 'folder',
+    children: [],
+    selected: true
+  },
+  {
+    id: '7',
+    name: 'Imported Website - 3/22/2024',
+    type: 'file',
+  },
 ]
 
-const openSourcedModels: Model[] = [
-  { name: 'Hugging Face', logo: '/model_logo/hf-logo.svg', enabled: false },
-  { name: 'DeepSeek', logo: '/model_logo/deepseek-logo.svg', enabled: false },
-  { name: 'Perplexity AI', logo: '/model_logo/perplexity-logo.svg', enabled: false },
-  { name: 'Meta: llama. 3.2 1B', logo: '/model_logo/meta-logo.svg', enabled: false },
-]
+export default function CreateAgentPage() {
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [isPrivate, setIsPrivate] = useState(false)
+  const [baseModel, setBaseModel] = useState('claude-4')
+  const [welcomeMessage, setWelcomeMessage] = useState('')
+  const [instructions, setInstructions] = useState('')
+  const [profileImage, setProfileImage] = useState<File | null>(null)
+  const [referenceEnabled, setReferenceEnabled] = useState(false)
 
-export default function ModelsPage() {
-  const [defaultModel, setDefaultModel] = React.useState('Claude-3.7')
-  const [customModelDialogOpen, setCustomModelDialogOpen] = React.useState(false)
-  const [modelStates, setModelStates] = React.useState<Record<string, boolean>>(
-    models.reduce((acc, model) => ({ ...acc, [model.name]: model.enabled }), {})
-  )
-  const [openSourcedModelStates, setOpenSourcedModelStates] = React.useState<Record<string, boolean>>(
-    openSourcedModels.reduce((acc, model) => ({ ...acc, [model.name]: model.enabled }), {})
-  )
+  const models = [
+    { value: 'claude-3.5', label: 'Anthropic Claude-3.5' },
+    { value: 'claude-3.7', label: 'Anthropic Claude-3.7' },
+    { value: 'gpt4', label: 'GPT-4' },
+    { value: 'gpt4o', label: 'GPT-4o' },
+    { value: 'o1-mini', label: 'GPT O1-mini' },
+    { value: 'gemini', label: 'Google Gemini' },
+    { value: 'mistral', label: 'Mistral' },
+    { value: 'deepseek', label: 'DeepSeek' },
+    { value: 'perplexity', label: 'Perplexity AI' },
+    { value: 'meta', label: 'Meta: llama. 3.2 1B' },
+    { value: 'huggingface', label: 'Hugging Face' },    
+  ]
 
-  const handleModelToggle = (modelName: string) => {
-    setModelStates(prev => ({
-      ...prev,
-      [modelName]: !prev[modelName]
-    }))
-  }
-
-  const handleOpenSourcedToggle = (modelName: string) => {
-    setOpenSourcedModelStates(prev => ({
-      ...prev,
-      [modelName]: !prev[modelName]
-    }))
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setProfileImage(event.target.files[0])
+    }
   }
 
   return (
     <Box sx={{ p: 4, maxWidth: '1200px', margin: '0 auto' }}>
-      <Typography variant="h4" sx={{ mb: 4 }}>
-        AI Models
-      </Typography>
-
-      <Box sx={{ mb: 6 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Default Model:
-        </Typography>
-        <FormControl sx={{ maxWidth: '600px', width: '100%' }}>
-          <Select
-            value={defaultModel}
-            onChange={(e) => setDefaultModel(e.target.value)}
+      {/* Header */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        mb: 4 
+      }}>
+        <Box>
+          <Typography variant="h4" sx={{ mb: 1 }}>
+            Agent Settings
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Agent Name
+          </Typography>
+        </Box>
+        
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <ActionButton
+            variant="contained"
             sx={{
-              backgroundColor: 'background.paper',
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderRadius: 1,
+              bgcolor: 'primary.main',
+              color: 'white',
+              '&:hover': {
+                bgcolor: 'primary.dark',
               },
             }}
           >
+            Save
+          </ActionButton>
+          
+          <ActionButton
+            variant="outlined"
+            endIcon={<OpenInNewIcon />}
+            sx={{
+              border: '1px solid black',
+              color: 'black',
+              '&:hover': {
+                border: '1px solid black',
+                bgcolor: 'action.hover',
+              },
+            }}
+          >
+            Open chat
+          </ActionButton>
+        </Box>
+      </Box>
+
+      {/* General Information Section */}
+      <StyledSection>
+        <Typography variant="h6" className="section-title">
+          General Information
+        </Typography>
+        
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <TextField
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            fullWidth
+            sx={{ maxWidth: 600 }}
+          />
+          
+          <TextField
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            multiline
+            rows={4}
+            fullWidth
+            sx={{ maxWidth: 600 }}
+            helperText="Helps team members understand what the agent is for."
+          />
+          
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            maxWidth: 600,
+            mt: 2 
+          }}>
+            <Box>
+              <Typography variant="subtitle1">
+                Private
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                When enabled the AI agent will only be shown to you. If disabled, the Agent will be available to anyone in your organization.
+              </Typography>
+            </Box>
+            <Switch
+              checked={isPrivate}
+              onChange={(e) => setIsPrivate(e.target.checked)}
+            />
+          </Box>
+        </Box>
+      </StyledSection>
+
+      {/* Welcome Message Section */}
+      <StyledSection>
+        <Typography variant="h6" className="section-title">
+          Welcome Message
+        </Typography>
+        
+        <TextField
+          label="Message"
+          value={welcomeMessage}
+          onChange={(e) => setWelcomeMessage(e.target.value)}
+          fullWidth
+          sx={{ maxWidth: 600 }}
+          placeholder="Set a welcome message for your agent."
+        />
+      </StyledSection>
+
+      {/* Profile Picture Section */}
+      <StyledSection>
+        <Typography variant="h6" className="section-title">
+          Profile Picture
+        </Typography>
+        
+        <input
+          type="file"
+          accept="image/*"
+          id="profile-image-upload"
+          hidden
+          onChange={handleImageUpload}
+        />
+        <label htmlFor="profile-image-upload">
+          <ImageUploadButton>
+            <AddIcon sx={{ mb: 1 }} />
+            <Typography variant="body2" align="center">
+              Upload<br />image
+            </Typography>
+          </ImageUploadButton>
+        </label>
+      </StyledSection>
+
+      {/* Instructions Section */}
+      <StyledSection>
+        <Typography variant="h6" className="section-title">
+          Instructions
+        </Typography>
+        
+        <Box sx={{ maxWidth: 600 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            These instructions will help the assistant perform based on specific tasks or instructions.
+          </Typography>
+          
+          <TextField
+            multiline
+            rows={6}
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            fullWidth
+            placeholder="Eg., You are an expert on sales with updated knowledge from our competitors.
+
+You will help analyze information, and provide advice to boost company revenue."
+          />
+        </Box>
+      </StyledSection>
+
+      {/* Model Section */}
+      <StyledSection>
+        <Typography variant="h6" className="section-title">
+          Model
+        </Typography>
+        
+        <FormControl sx={{ maxWidth: 600, width: '100%' }}>
+          <InputLabel>Base Model</InputLabel>
+          <Select
+            value={baseModel}
+            onChange={(e) => setBaseModel(e.target.value)}
+            label="Base Model"
+          >
             {models.map((model) => (
-              <MenuItem key={model.name} value={model.name}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Image
-                    src={model.logo}
-                    alt={`${model.name} logo`}
-                    width={24}
-                    height={24}
-                  />
-                  {model.name}
-                </Box>
+              <MenuItem key={model.value} value={model.value}>
+                {model.label}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-          <Button
-            variant="contained"
-            onClick={() => setCustomModelDialogOpen(true)}
-            sx={{
-              bgcolor: 'black',
-              color: 'white',
-              '&:hover': {
-                bgcolor: 'black',
-                opacity: 0.9,
-              },
-            }}
-          >
-            Add custom model
-          </Button>
-        </Box>
-      </Box>
+      </StyledSection>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 3, mb: 6 }}>
-        {models.map((model) => (
-          <ModelCard key={model.name}>
-            <Image
-              src={model.logo}
-              alt={`${model.name} logo`}
-              width={40}
-              height={40}
-            />
-            <Typography sx={{ flex: 1 }}>{model.name}</Typography>
-            <Switch 
-              checked={modelStates[model.name] ?? model.enabled}
-              onChange={() => handleModelToggle(model.name)}
-            />
-          </ModelCard>
-        ))}
-      </Box>
-
-      <Typography variant="h6" sx={{ mb: 3 }}>
-        Open sourced models
-      </Typography>
-
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 3 }}>
-        {openSourcedModels.map((model) => (
-          <ModelCard key={model.name}>
-            <Image
-              src={model.logo}
-              alt={`${model.name} logo`}
-              width={40}
-              height={40}
-            />
-            <Typography sx={{ flex: 1 }}>{model.name}</Typography>
-            <Switch 
-              checked={openSourcedModelStates[model.name] ?? false}
-              onChange={() => handleOpenSourcedToggle(model.name)}
-            />
-          </ModelCard>
-        ))}
-      </Box>
-
-      {/* Custom Model Dialog */}
-      <Dialog
-        open={customModelDialogOpen}
-        onClose={() => setCustomModelDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Custom Model Deployment</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mt: 2 }}>
-            For custom model deployment or self-hosting options, please contact our team. We can help you:
-          </Typography>
-          <Box component="ul" sx={{ mt: 2, pl: 2 }}>
-            <li>Set up self-hosted models on your infrastructure</li>
-            <li>Configure custom model integrations</li>
-            <li>Optimize model performance for your use case</li>
-            <li>Ensure security and compliance requirements</li>
+      {/* Knowledge Base Reference Section */}
+      <StyledSection>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'flex-start',
+          mb: 3 
+        }}>
+          <Box>
+            <Typography variant="h6" className="section-title" sx={{ mb: 1 }}>
+              Knowledge Base Reference
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 800 }}>
+              If this feature is enabled the AI agent will reference your knowledge base and data to answer questions. 
+              Useful for HR, or other support related functions.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 800, mt: 2 }}>
+              If it is disabled, the agent will not reference the knowledge base. Useful for producing high volume content 
+              like marketing or sales assistants. *Tip: use the / in chat to reference your knowledge base at anytime.
+            </Typography>
           </Box>
-          <Typography sx={{ mt: 2 }}>
-            Contact us at:{' '}
-            <Box component="span" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-              <a href="mailto:contact@finiite.com" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                contact@finiite.com
-              </a>
-            </Box>
+          <Switch
+            checked={referenceEnabled}
+            onChange={(e) => setReferenceEnabled(e.target.checked)}
+          />
+        </Box>
+
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Select your agent's knowledge base
           </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCustomModelDialogOpen(false)} color="primary">
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+          
+          <Box sx={{ 
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 1,
+            overflow: 'hidden'
+          }}>
+            <Box sx={{ 
+              p: 2, 
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'background.paper'
+            }}>
+              <Typography>All files (2)</Typography>
+            </Box>
+            
+            <Box sx={{ 
+              bgcolor: '#f8f9fa',
+              p: 2
+            }}>
+              {knowledgeBaseData.map((item) => (
+          
+          <Box
+                  key={item.id}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    p: 1,
+                    gap: 1,
+                    cursor: 'pointer',
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                    },
+                  }}
+                >
+                  <FolderIcon sx={{ color: 'text.secondary' }} />
+                  <Typography sx={{ flex: 1 }}>{item.name}</Typography>
+                  {item.type === 'folder' && <ExpandMoreIcon sx={{ color: 'text.secondary' }} />}
+                  {item.selected && <CheckIcon sx={{ color: 'primary.main' }} />}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      </StyledSection>
     </Box>
   )
 }
