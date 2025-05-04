@@ -176,7 +176,12 @@ export default function ModelsPage() {
             <li>Ensure security and compliance requirements</li>
           </Box>
           <Typography sx={{ mt: 2 }}>
-            Contact us at: contact@finiite.com
+            Contact us at:{' '}
+            <Box component="span" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+              <a href="mailto:contact@finiite.com" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                contact@finiite.com
+              </a>
+            </Box>
           </Typography>
         </DialogContent>
         <DialogActions>
