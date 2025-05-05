@@ -7,6 +7,7 @@ import AddIcon from '@mui/icons-material/Add'
 import FolderIcon from '@mui/icons-material/Folder'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import CheckIcon from '@mui/icons-material/Check'
+import { useRouter } from 'next/navigation'
 
 const StyledSection = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(4),
@@ -101,6 +102,7 @@ export default function CreateAgentPage() {
   const [profileImage, setProfileImage] = useState<File | null>(null)
   const [referenceEnabled, setReferenceEnabled] = useState(false)
   const [category, setCategory] = useState<string>('')
+  const router = useRouter()
 
   const models = [
     { value: 'claude-3.5', label: 'Anthropic Claude-3.5' },
@@ -130,7 +132,17 @@ export default function CreateAgentPage() {
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
-      setProfileImage(event.target.files[0])
+      const file = event.target.files[0]
+      
+      // Convert the file to a data URL
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const base64String = reader.result
+        setProfileImage(file)
+        // Store the base64 string to use as avatar
+        localStorage.setItem('tempAgentImage', base64String as string)
+      }
+      reader.readAsDataURL(file)
     }
   }
 
@@ -143,14 +155,19 @@ export default function CreateAgentPage() {
       instructions,
       baseModel,
       category,
+      // Use the stored base64 string as avatar
+      avatar: localStorage.getItem('tempAgentImage') || "/default-avatar.png",
       id: Date.now().toString(),
     }
+
     // Get existing agents
     const existing = JSON.parse(localStorage.getItem("myAgents") || "[]")
     // Save new list
     localStorage.setItem("myAgents", JSON.stringify([...existing, agent]))
-    // Optionally redirect to /my-agents or show a success message
-    window.location.href = "/dashboard/my-agents"
+    // Clean up the temporary image storage
+    localStorage.removeItem('tempAgentImage')
+    // Redirect to /my-agents
+    router.push("/dashboard/my-agents")
   }
 
   return (
@@ -283,10 +300,26 @@ export default function CreateAgentPage() {
         />
         <label htmlFor="profile-image-upload">
           <ImageUploadButton>
-            <AddIcon sx={{ mb: 1 }} />
-            <Typography variant="body2" align="center">
-              Upload<br />image
-            </Typography>
+            {profileImage ? (
+              <Box
+                component="img"
+                src={URL.createObjectURL(profileImage)}
+                alt="Profile preview"
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  objectFit: 'cover'
+                }}
+              />
+            ) : (
+              <>
+                <AddIcon sx={{ mb: 1 }} />
+                <Typography variant="body2" align="center">
+                  Upload<br />image
+                </Typography>
+              </>
+            )}
           </ImageUploadButton>
         </label>
       </StyledSection>
