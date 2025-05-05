@@ -6,7 +6,7 @@ interface DataSource {
   id: string
   icon: string
   name: string
-  status: "verified" | "outdated" | "to_verify" | "syncing"
+  status: "Verified" | "Outdated" | "Syncing"
   size: string
   owner: string
   lastSync: string
@@ -17,7 +17,7 @@ const dataSources: DataSource[] = [
     id: "1",
     icon: "/icons/software.png",
     name: "Software",
-    status: "verified",
+    status: "Verified",
     size: "1 MB",
     owner: "Jeff Sutherland",
     lastSync: "3 days ago"
@@ -26,7 +26,7 @@ const dataSources: DataSource[] = [
     id: "2",
     icon: "/icons/pdf.png",
     name: "PDF file insurance",
-    status: "outdated",
+    status: "Outdated",
     size: "5.6 MB",
     owner: "Alice Young",
     lastSync: "6 months ago"
@@ -35,7 +35,7 @@ const dataSources: DataSource[] = [
     id: "3",
     icon: "/icons/google-drive.png",
     name: "Sales prospect list",
-    status: "verified",
+    status: "Verified",
     size: "1 GB",
     owner: "Rahul G",
     lastSync: "Syncing"
@@ -45,14 +45,12 @@ const dataSources: DataSource[] = [
 
 const StatusIcon = ({ status }: { status: string }) => {
   switch (status) {
-    case "verified":
-      return <CheckCircle className="h-5 w-5 text-green-500" />
-    case "outdated":
-      return <XCircle className="h-5 w-5 text-red-500" />
-    case "to_verify":
-      return <AlertCircle className="h-5 w-5 text-yellow-500" />
-    case "syncing":
-      return <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />
+    case "Verified":
+      return <CheckCircle className="h-4 w-4 text-green-500" />
+    case "Outdated":
+      return <XCircle className="h-4 w-4 text-red-500" />
+    case "Syncing":
+      return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />
     default:
       return null
   }
@@ -60,13 +58,11 @@ const StatusIcon = ({ status }: { status: string }) => {
 
 const StatusText = ({ status }: { status: string }) => {
   switch (status) {
-    case "verified":
+    case "Verified":
       return "Verified"
-    case "outdated":
+    case "Outdated":
       return "Outdated"
-    case "to_verify":
-      return "To verify"
-    case "syncing":
+    case "Syncing":
       return "Syncing"
     default:
       return status
@@ -75,15 +71,15 @@ const StatusText = ({ status }: { status: string }) => {
 
 export function DataTable() {
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="bg-white rounded-lg shadow overflow-hidden">
       <table className="w-full">
         <thead>
           <tr className="border-b">
-            <th className="text-left p-4">Name</th>
-            <th className="text-left p-4">Status</th>
-            <th className="text-left p-4">Size</th>
-            <th className="text-left p-4">Owner</th>
-            <th className="text-left p-4">Last sync</th>
+            <th className="text-left p-4 text-sm font-medium text-gray-500">Name</th>
+            <th className="text-left p-4 text-sm font-medium text-gray-500">Status</th>
+            <th className="text-left p-4 text-sm font-medium text-gray-500">Size</th>
+            <th className="text-left p-4 text-sm font-medium text-gray-500">Owner</th>
+            <th className="text-left p-4 text-sm font-medium text-gray-500">Last sync</th>
           </tr>
         </thead>
         <tbody>
@@ -91,30 +87,36 @@ export function DataTable() {
             <tr key={source.id} className="border-b hover:bg-gray-50">
               <td className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8">
+                  <div className="w-8 h-8 relative flex-shrink-0">
                     <Image
                       src={source.icon}
                       alt={source.name}
-                      width={32}
-                      height={32}
+                      fill
+                      className="object-contain"
                     />
                   </div>
-                  <span>{source.name}</span>
+                  <span className="text-sm font-medium truncate max-w-[200px]">
+                    {source.name}
+                  </span>
                 </div>
               </td>
               <td className="p-4">
                 <div className="flex items-center gap-2">
                   <StatusIcon status={source.status} />
-                  <span>{StatusText({ status: source.status })}</span>
+                  <span className="text-sm">{source.status}</span>
                 </div>
               </td>
-              <td className="p-4">{source.size}</td>
-              <td className="p-4">{source.owner}</td>
+              <td className="p-4 text-sm">{source.size}</td>
+              <td className="p-4">
+                <span className="text-sm truncate max-w-[150px] block">
+                  {source.owner}
+                </span>
+              </td>
               <td className="p-4">
                 <div className="flex items-center gap-2">
-                  <span>{source.lastSync}</span>
-                  {source.status === "syncing" && (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">{source.lastSync}</span>
+                  {source.status === "Syncing" && (
+                    <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
                   )}
                 </div>
               </td>

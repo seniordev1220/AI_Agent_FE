@@ -1,4 +1,5 @@
 "use client"
+import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,26 +14,26 @@ interface Agent {
   category: string
 }
 
-const agents: Agent[] = [
+const defaultAgents: Agent[] = [
   {
     id: "1",
     name: "Sales Agent",
     description: "Enrich leads in Salesforce, help book meetings with prospect information.",
-    avatar: "/agents/sales-agent.png",
+    avatar: "/agents/code.svg",
     category: "Sales"
   },
   {
     id: "2",
     name: "Data Analyst",
     description: "Extract valuable information from complex data.",
-    avatar: "/agents/data-analyst.png",
+    avatar: "/agents/code.svg",
     category: "Tech"
   },
   {
     id: "3",
     name: "Competitor Market Research Agent",
     description: "Generate reports that secure more deals for the team.",
-    avatar: "/agents/research-agent.png",
+    avatar: "/agents/code.svg",
     category: "Research"
   },
   // Add more agents as needed
@@ -44,9 +45,31 @@ interface CategorizedAgentsProps {
 
 export function CategorizedAgents({ selectedCategory }: CategorizedAgentsProps) {
   const router = useRouter()
+  const [allAgents, setAllAgents] = useState<Agent[]>(defaultAgents)
 
-  const filteredAgents = agents.filter(agent => 
-    selectedCategory === "My Agents" || agent.category === selectedCategory
+  useEffect(() => {
+    // Get custom agents from localStorage
+    let myAgents: Agent[] = []
+    try {
+      myAgents = JSON.parse(localStorage.getItem("myAgents") || "[]")
+      // Fallback for missing fields
+      myAgents = myAgents.map((agent) => ({
+        id: agent.id || Date.now().toString(),
+        name: agent.name || "Untitled Agent",
+        description: agent.description || "",
+        avatar: agent.avatar || "/agents/code.svg",
+        category: agent.category || "My Agents"
+      }))
+    } catch {
+      myAgents = []
+    }
+    setAllAgents([...defaultAgents, ...myAgents])
+  }, [])
+
+  const filteredAgents = allAgents.filter(agent =>
+    selectedCategory === "My Agents"
+      ? agent.category === "My Agents" || agent.category === undefined // show user-created
+      : agent.category === selectedCategory
   )
 
   if (filteredAgents.length === 0) {
@@ -102,4 +125,4 @@ export function CategorizedAgents({ selectedCategory }: CategorizedAgentsProps) 
       ))}
     </div>
   )
-} 
+}

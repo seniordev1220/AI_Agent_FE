@@ -1,5 +1,5 @@
 "use client"
-import { Box, Typography, Button, TextField, Switch, Select, MenuItem, FormControl, InputLabel } from '@mui/material'
+import { Box, Typography, Button, TextField, Switch, Select, MenuItem, FormControl, InputLabel, Chip } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { useState } from 'react'
@@ -100,6 +100,7 @@ export default function CreateAgentPage() {
   const [instructions, setInstructions] = useState('')
   const [profileImage, setProfileImage] = useState<File | null>(null)
   const [referenceEnabled, setReferenceEnabled] = useState(false)
+  const [category, setCategory] = useState<string>('')
 
   const models = [
     { value: 'claude-3.5', label: 'Anthropic Claude-3.5' },
@@ -115,10 +116,42 @@ export default function CreateAgentPage() {
     { value: 'huggingface', label: 'Hugging Face' },    
   ]
 
+  const availableCategories = [
+    "Sales",
+    "Marketing",
+    "HR",
+    "IT",
+    "Customer Support",
+    "Operations",
+    "Finance",
+    "Legal",
+    "Research",
+    "Development"
+  ]
+
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       setProfileImage(event.target.files[0])
     }
+  }
+
+  const handleSave = () => {
+    const agent = {
+      name,
+      description,
+      isPrivate,
+      welcomeMessage,
+      instructions,
+      baseModel,
+      category,
+      id: Date.now().toString(),
+    }
+    // Get existing agents
+    const existing = JSON.parse(localStorage.getItem("myAgents") || "[]")
+    // Save new list
+    localStorage.setItem("myAgents", JSON.stringify([...existing, agent]))
+    // Optionally redirect to /my-agents or show a success message
+    window.location.href = "/dashboard/my-agents"
   }
 
   return (
@@ -149,6 +182,7 @@ export default function CreateAgentPage() {
                 bgcolor: 'primary.dark',
               },
             }}
+            onClick={handleSave}
           >
             Save
           </ActionButton>
@@ -298,6 +332,28 @@ You will help analyze information, and provide advice to boost company revenue."
             {models.map((model) => (
               <MenuItem key={model.value} value={model.value}>
                 {model.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </StyledSection>
+
+      {/* Categories Section */}
+      <StyledSection>
+        <Typography variant="h6" className="section-title">
+          Category
+        </Typography>
+        
+        <FormControl sx={{ maxWidth: 600, width: '100%' }}>
+          <InputLabel>Select Category</InputLabel>
+          <Select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            label="Select Category"
+          >
+            {availableCategories.map((category) => (
+              <MenuItem key={category} value={category}>
+                {category}
               </MenuItem>
             ))}
           </Select>
