@@ -11,7 +11,7 @@ interface Agent {
   name: string
   description: string
   avatar: string
-  category: string
+  categories?: string[]
 }
 
 const defaultAgents: Agent[] = [
@@ -20,21 +20,21 @@ const defaultAgents: Agent[] = [
     name: "Sales Agent",
     description: "Enrich leads in Salesforce, help book meetings with prospect information.",
     avatar: "/agents/code.svg",
-    category: "Sales"
+    categories: ["Sales"]
   },
   {
     id: "2",
     name: "Data Analyst",
     description: "Extract valuable information from complex data.",
     avatar: "/agents/code.svg",
-    category: "Tech"
+    categories: ["Tech"]
   },
   {
     id: "3",
     name: "Competitor Market Research Agent",
     description: "Generate reports that secure more deals for the team.",
     avatar: "/agents/code.svg",
-    category: "Research"
+    categories: ["Research"]
   },
   // Add more agents as needed
 ]
@@ -52,25 +52,23 @@ export function CategorizedAgents({ selectedCategory }: CategorizedAgentsProps) 
     let myAgents: Agent[] = []
     try {
       myAgents = JSON.parse(localStorage.getItem("myAgents") || "[]")
-      // Fallback for missing fields
-      myAgents = myAgents.map((agent) => ({
-        id: agent.id || Date.now().toString(),
-        name: agent.name || "Untitled Agent",
-        description: agent.description || "",
-        avatar: agent.avatar || "/agents/code.svg",
-        category: agent.category || "My Agents"
-      }))
     } catch {
       myAgents = []
     }
     setAllAgents([...defaultAgents, ...myAgents])
   }, [])
 
-  const filteredAgents = allAgents.filter(agent =>
-    selectedCategory === "My Agents"
-      ? agent.category === "My Agents" || agent.category === undefined // show user-created
-      : agent.category === selectedCategory
-  )
+  const filteredAgents = allAgents.filter(agent => {
+    if (selectedCategory === "My Agents") {
+      // Show only user-created agents (those from localStorage)
+      return !defaultAgents.some(defaultAgent => defaultAgent.id === agent.id)
+    }
+    if (selectedCategory === "All") {
+      return true // Show all agents
+    }
+    // Show agents that have the selected category
+    return agent.categories?.includes(selectedCategory)
+  })
 
   if (filteredAgents.length === 0) {
     return (
@@ -94,13 +92,17 @@ export function CategorizedAgents({ selectedCategory }: CategorizedAgentsProps) 
       {filteredAgents.map((agent) => (
         <Card key={agent.id} className="p-6 hover:shadow-sm transition-shadow">
           <div className="flex items-start gap-4">
-            <Image
-              src={agent.avatar}
-              alt={agent.name}
-              width={48}
-              height={48}
-              className="rounded-full"
-            />
+            <div className="relative w-12 h-12">
+              <Image
+                src={agent.avatar || "/default-avatar.png"}
+                alt={agent.name || "Agent"}
+                fill
+                className="rounded-full object-cover"
+                onError={(e: any) => {
+                  e.target.src = "/default-avatar.png"
+                }}
+              />
+            </div>
             <div className="flex-1">
               <h3 className="text-lg font-medium mb-2">{agent.name}</h3>
               <p className="text-gray-600 mb-4">{agent.description}</p>

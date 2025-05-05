@@ -171,7 +171,13 @@ export default function CreateAgentPage() {
   }
 
   return (
-    <Box sx={{ p: 4, maxWidth: '1200px', margin: '0 auto' }}>
+    <Box sx={{ 
+      p: 4, 
+      maxWidth: '1200px', 
+      margin: '0 auto',
+      bgcolor: '#F6F9FC',
+      minHeight: '100vh'
+    }}>
       {/* Header */}
       <Box sx={{ 
         display: 'flex', 
