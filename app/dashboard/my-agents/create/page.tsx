@@ -118,15 +118,14 @@ export default function CreateAgentPage() {
 
   const availableCategories = [
     "Sales",
+    "Tech",
     "Marketing",
-    "HR",
-    "IT",
-    "Customer Support",
     "Operations",
-    "Finance",
-    "Legal",
+    "Business Development",
+    "HR",
+    "Customer Support",
     "Research",
-    "Development"
+    "Personal",
   ]
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
