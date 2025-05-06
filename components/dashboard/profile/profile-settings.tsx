@@ -11,7 +11,8 @@ export function ProfileSettings() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
   const [formData, setFormData] = useState({
     email: session?.user?.email || '',
-    name: session?.user?.name || '',
+    first_name: session?.user?.name?.split(' ')[0] || '',
+    last_name: session?.user?.name?.split(' ').slice(1).join(' ') || '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,14 +43,27 @@ export function ProfileSettings() {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="name" className="block text-sm font-medium">
-              Name
+            <label htmlFor="first_name" className="block text-sm font-medium">
+              First Name
             </label>
             <Input
-              id="name"
+              id="first_name"
               type="text"
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              value={formData.first_name}
+              onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
+              className="w-full rounded-lg border border-gray-200"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="last_name" className="block text-sm font-medium">
+              Last Name
+            </label>
+            <Input
+              id="last_name"
+              type="text"
+              value={formData.last_name}
+              onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
               className="w-full rounded-lg border border-gray-200"
             />
           </div>
