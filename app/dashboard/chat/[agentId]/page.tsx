@@ -1,120 +1,154 @@
-"use client"
-import { useState, useEffect } from "react"
-import { MessageInput } from "@/components/ai-agents/message-input"
-import { ModelSelector } from "@/components/ai-agents/model-selector"
-import { Button } from "@/components/ui/button"
-import Image from "next/image"
-import { useParams, useRouter } from "next/navigation"
+// app/chat/page.tsx
+"use client";
+import { useState, useRef, useEffect } from "react";
+import { Box } from "@mui/material";
+import { ModelSelector } from "@/components/ai-agents/model-selector";
+import { MessageInput } from "@/components/ai-agents/message-input";
 
-// Use the same agents data
-const agents = [
-  {
-    id: "1",
-    name: "Sales Agent",
-    avatar: "/agents/code.svg",
-    description: "Enrich leads in Salesforce, help book meetings with prospect information.",
-    greeting: "Hello! I'm your go-to expert for reaching out to potential clients, expanding your network, and helping you meet your sales targets. Ready to start?"
-  },
-  {
-    id: "2",
-    name: "HR Onboarding Agent",
-    avatar: "/agents/code.svg",
-    description: "Help with employee onboarding and HR processes.",
-    greeting: "Hi there! I'm here to help with all your HR and onboarding needs. What can I assist you with today?"
-  },
-  {
-    id: "3",
-    name: "IT Support Agent",
-    avatar: "/agents/code.svg",
-    description: "Debug code, make product decisions with guidance and best practises.",
-    greeting: "Hello! I'm your IT support specialist. How can I help you today?"
-  }
-]
-
-interface Message {
-  id: string
-  content: string
-  role: 'user' | 'assistant'
-  timestamp: Date
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 export default function ChatPage() {
-  const params = useParams()
-  const router = useRouter()
-  const [messages, setMessages] = useState<Message[]>([])
-  
-  // Find the agent based on the URL parameter
-  const agent = agents.find(a => a.id === params.agentId)
+  const [message, setMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
-  // If no agent is found, redirect back to agents page
+  // Add ref for chat container
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom whenever chat history updates
   useEffect(() => {
-    if (!agent) {
-      router.push('/dashboard/ai-agents')
-    }
-  }, [agent, router])
+    const scrollToBottom = () => {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    };
 
-  if (!agent) return null
+    // Scroll immediately
+    scrollToBottom();
+
+    // And scroll again after a short delay to ensure content is rendered
+    const timeoutId = setTimeout(scrollToBottom, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [chatHistory]);
+
+  const handleSendMessage = async (message: string) => {
+    // Add user message to chat history
+    const newMessage: ChatMessage = { role: 'user', content: message };
+    setChatHistory(prev => [...prev, newMessage]);
+
+    try {
+      // Send request to the API route
+      const response = await fetch('/api/openai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            ...chatHistory.map(msg => ({ role: msg.role, content: msg.content })),
+            { role: "user", content: message },
+          ],
+        }),
+      });
+
+      // Parse the response
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get a response from the server.');
+      }
+
+      // Extract assistant's response
+      const aiResponse: ChatMessage = {
+        role: 'assistant',
+        content: data.response,
+      };
+
+      // Add AI response to chat history
+      setChatHistory(prev => [...prev, aiResponse]);
+    } catch (error) {
+      console.error('Error getting chat completion:', error);
+
+      // Add error message to chat history
+      const errorMessage: ChatMessage = {
+        role: 'assistant',
+        content: "An error occurred while processing your request. Please try again later.",
+      };
+      setChatHistory(prev => [...prev, errorMessage]);
+    }
+  };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-6">
-      <div className="flex items-center justify-between mb-8">
-        <ModelSelector />
-        <Button 
-          variant="ghost"
-          onClick={() => router.push('/dashboard/ai-agents')}
-        >
-          Back to Agents
-        </Button>
-      </div>
-
-      <div className="flex flex-col items-center text-center space-y-4">
-        <Image
-          src={agent.avatar}
-          alt={agent.name}
-          width={120}
-          height={120}
-          className="rounded-full"
-        />
-        <h1 className="text-2xl font-semibold">{agent.name}</h1>
-        <p className="text-gray-600 max-w-md">{agent.description}</p>
-        
-        {messages.length === 0 && (
-          <div className="mt-8">
-            <p className="text-gray-600">{agent.greeting}</p>
+    <div className="h-[87vh] flex overflow-hidden">
+      <div className="flex-1 flex flex-col bg-white overflow-hidden">
+        {/* Header with Model Selector - now fixed at top */}
+        <div className="sticky top-0 z-10 bg-white pt-4 pb-2 px-4">
+          <div className="max-w-[200px]">
+            <ModelSelector />
           </div>
-        )}
-      </div>
-
-      {messages.length > 0 && (
-        <div className="space-y-6 mt-8">
-          {messages.map((message) => (
-            <div key={message.id} className="flex items-start gap-4">
-              <Image
-                src={agent.avatar}
-                alt={agent.name}
-                width={40}
-                height={40}
-                className="rounded-full"
-              />
-              <div className="bg-gray-100 rounded-lg p-4 max-w-[80%]">
-                <p>{message.content}</p>
-              </div>
-            </div>
-          ))}
         </div>
-      )}
 
-      <MessageInput onSend={(message) => {
-        setMessages([
-          ...messages,
-          {
-            id: Date.now().toString(),
-            content: message,
-            role: 'user',
-            timestamp: new Date()
-          }
-        ])
-      }} />
+        {/* Chat Messages - only this section should scroll */}
+        <div
+          ref={chatContainerRef}
+          className="flex-1 p-8 overflow-y-auto flex flex-col gap-6"
+        >
+          {chatHistory.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <img
+                src="/agents/code.svg"
+                alt="Sales Agent"
+                className="w-24 h-24 rounded-full mb-4"
+              />
+              <h2 className="text-xl font-semibold mb-2">Sales Agent</h2>
+              <p className="text-gray-600 text-center mb-2">
+                Enrich leads in Salesforce, help book meetings with prospect information.
+              </p>
+              <p className="text-gray-500 text-center max-w-[600px]">
+                Hello! I'm your go-to expert for reaching out to potential clients, expanding your network, and helping you meet your sales targets. Ready to start?
+              </p>
+            </div>
+          ) : (
+            // Existing chat history rendering
+            chatHistory.map((msg, index) => (
+              msg.role === 'user' ? (
+                // User Message
+                <div key={index} className="self-end bg-gray-100 p-4 rounded-2xl max-w-[80%]">
+                  <p className="text-gray-800">{msg.content}</p>
+                </div>
+              ) : (
+                // AI Response
+                <div key={index} className="flex gap-4 max-w-[80%]">
+                  <img
+                    src="/agents/code.svg"
+                    alt="Sales Agent"
+                    className="w-12 h-12 rounded-full"
+                  />
+                  <div>
+                    <p className="font-medium mb-2">Sales Agent</p>
+                    <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm">
+                      <div className="space-y-4 whitespace-pre-wrap">
+                        {msg.content}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            ))
+          )}
+        </div>
+
+        {/* Message Input - now fixed at bottom */}
+        <div className="sticky bottom-0 z-10 w-full p-6 bg-gray-50">
+          <MessageInput
+            message={message}
+            setMessage={setMessage}
+            onSend={handleSendMessage}
+          />
+        </div>
+      </div>
     </div>
-  )
-} 
+  );
+}

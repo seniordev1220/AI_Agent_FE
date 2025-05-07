@@ -1,16 +1,15 @@
 "use client"
-import { useState } from "react"
 import { Plus, FileCode, Image as ImageIcon, ArrowRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
 interface MessageInputProps {
+  message: string
+  setMessage: (message: string) => void
   onSend?: (message: string) => void
 }
 
-export function MessageInput({ onSend }: MessageInputProps) {
-  const [message, setMessage] = useState("")
-
+export function MessageInput({ message, setMessage, onSend }: MessageInputProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!message.trim()) return
@@ -20,45 +19,45 @@ export function MessageInput({ onSend }: MessageInputProps) {
   }
 
   return (
-    <div className="fixed bottom-0 left-[240px] right-0">
-      <div className="max-w-[1200px] mx-auto px-6 pb-4">
+    <div className="w-full">
+      <div className="mx-auto">
         <form onSubmit={handleSubmit}>
-          <div className="bg-[#F8F9FC] rounded-lg p-3">
+          <div className="bg-[#F8F9FC] rounded-lg p-2">
             <Input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="type message.."
-              className="bg-[#F8F9FC] border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 h-6 text-sm"
+              className="bg-[#F8F9FC] border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 h-5 text-sm"
             />
             
-            <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center justify-between mt-1">
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  className="p-1.5 hover:bg-gray-200 rounded-md text-[#8C8CA1]"
+                  className="p-1 hover:bg-gray-200 rounded-md text-[#8C8CA1]"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-3.5 w-3.5" />
                 </button>
                 <button
                   type="button"
-                  className="p-1.5 hover:bg-gray-200 rounded-md text-[#8C8CA1]"
+                  className="p-1 hover:bg-gray-200 rounded-md text-[#8C8CA1]"
                 >
-                  <FileCode className="h-4 w-4" />
+                  <FileCode className="h-3.5 w-3.5" />
                 </button>
                 <button
                   type="button"
-                  className="p-1.5 hover:bg-gray-200 rounded-md text-[#8C8CA1]"
+                  className="p-1 hover:bg-gray-200 rounded-md text-[#8C8CA1]"
                 >
-                  <ImageIcon className="h-4 w-4" />
+                  <ImageIcon className="h-3.5 w-3.5" />
                 </button>
               </div>
 
               <Button
                 type="submit"
                 size="icon"
-                className="bg-transparent hover:bg-gray-200 text-[#8C8CA1] h-7 w-7"
+                className="bg-transparent hover:bg-gray-200 text-[#8C8CA1] h-6 w-6"
               >
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
