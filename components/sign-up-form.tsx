@@ -44,7 +44,7 @@ export function SignUpForm() {
     setIsLoading(true)
     try {
       // Sign up request
-      const signUpResponse = await fetch('/auth/signup', {
+      const signUpResponse = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
