@@ -27,7 +27,7 @@ export function MessageInput({ message, setMessage, onSend }: MessageInputProps)
     editorProps: {
       handleKeyDown: (view, event) => {
         // If Ctrl+Enter is pressed, allow default behavior (new line)
-        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        if (event.key === 'Enter' && (event.shiftKey || event.metaKey)) {
           return false;
         }
         
