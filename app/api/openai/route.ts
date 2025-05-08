@@ -1,54 +1,51 @@
 // app/api/openai/route.ts
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { StreamingTextResponse, OpenAIStream } from 'ai';
 
 // Load environment variables
 require('dotenv').config();
 
-// Create OpenAI client
+// Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY || '', // Use environment variable or fallback
 });
 
-export const runtime = 'edge';
-
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const { messages, instruction } = await req.json();
+    const { messages, category } = await request.json();
 
     // Validate input
     if (!Array.isArray(messages) || messages.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid input: messages array is required.' }), 
+      return NextResponse.json(
+        { error: 'Invalid input: messages array is required.' },
         { status: 400 }
       );
     }
 
-    // Create chat completion with streaming
-    const response = await openai.chat.completions.create({
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: instruction || "You are a helpful AI assistant."
+          content: category || "You are a helpful AI assistant." // Use the agent's instruction or fallback
         },
         ...messages,
       ],
       temperature: 0.7,
-      stream: true,
     });
 
-    // Transform the response into a readable stream
-    const stream = OpenAIStream(response);
+    // Extract assistant's response
+    const aiResponse = completion.choices[0].message.content || "I'm sorry, I couldn't generate a response.";
 
-    // Return the stream with the appropriate headers
-    return new StreamingTextResponse(stream);
+    // Return the response
+    return NextResponse.json({ response: aiResponse });
+  } catch (error) {
+    console.error('Error getting chat completion:', error);
 
-  } catch (error: any) {
-    console.error('OpenAI API error:', error);
-    return new Response(
-      JSON.stringify({ error: 'An error occurred during the request.' }), 
+    // Return an error response
+    return NextResponse.json(
+      { error: 'An error occurred while processing your request.' },
       { status: 500 }
     );
   }

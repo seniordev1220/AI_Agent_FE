@@ -1,5 +1,7 @@
+// app/chat/page.tsx
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { Box } from "@mui/material";
 import { ModelSelector } from "@/components/ai-agents/model-selector";
 import { MessageInput } from "@/components/ai-agents/message-input";
 import React from "react";
@@ -22,10 +24,11 @@ export default function ChatPage({ params }: { params: Promise<{ agentId: string
   // Unwrap params using React.use()
   const { agentId } = React.use(params);
 
+  const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [agent, setAgent] = useState<Agent | null>(null);
 
-  // Chat container reference for scroll-to-bottom
+  // Add ref for chat container
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Load agent data from localStorage
@@ -44,19 +47,28 @@ export default function ChatPage({ params }: { params: Promise<{ agentId: string
         chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
       }
     };
+
+    // Scroll immediately
     scrollToBottom();
+
+    // And scroll again after a short delay to ensure content is rendered
     const timeoutId = setTimeout(scrollToBottom, 100);
+
     return () => clearTimeout(timeoutId);
   }, [chatHistory]);
 
   const handleSendMessage = async (message: string) => {
     // Add user message to chat history
-    setChatHistory(prev => [...prev, { role: 'user', content: message }, { role: 'assistant', content: '' }]);
+    const newMessage: ChatMessage = { role: 'user', content: message };
+    setChatHistory(prev => [...prev, newMessage]);
 
     try {
+      // Send request to the API route
       const response = await fetch('/api/openai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           messages: [
             ...chatHistory.map(msg => ({ role: msg.role, content: msg.content })),
@@ -66,60 +78,43 @@ export default function ChatPage({ params }: { params: Promise<{ agentId: string
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to get a response from the server.');
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader available');
-
-      const decoder = new TextDecoder();
-      let done = false;
-      let accumulatedContent = "";
-
-      while (!done) {
-        const { value, done: streamDone } = await reader.read();
-        done = streamDone;
-        if (value) {
-          const chunk = decoder.decode(value);
-          // This logic expects the Vercel AI SDK's OpenAIStream/StreamingTextResponse output
-          accumulatedContent += chunk;
-
-          // Update the last assistant message in chat history
-          setChatHistory(prev => {
-            // Only update the latest assistant message, keep previous messages intact
-            const newHistory = [...prev];
-            const lastIndex = newHistory.length - 1;
-            if (newHistory[lastIndex] && newHistory[lastIndex].role === "assistant") {
-              newHistory[lastIndex] = { ...newHistory[lastIndex], content: accumulatedContent };
-            }
-            return newHistory;
-          });
-        }
+      // Parse the response
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error?.message || data.error || 'Failed to get a response from the server.');
       }
+
+      // Extract assistant's response
+      const aiResponse: ChatMessage = {
+        role: 'assistant',
+        content: data.response,
+      };
+
+      // Add AI response to chat history
+      setChatHistory(prev => [...prev, aiResponse]);
     } catch (error) {
       console.error('Error getting chat completion:', error);
-      // Show error in the last assistant message
-      setChatHistory(prev => {
-        const newHistory = [...prev];
-        const lastIndex = newHistory.length - 1;
-        if (newHistory[lastIndex] && newHistory[lastIndex].role === "assistant") {
-          newHistory[lastIndex].content = "An error occurred while processing your request. Please try again later.";
-        }
-        return newHistory;
-      });
+
+      // Add error message to chat history
+      const errorMessage: ChatMessage = {
+        role: 'assistant',
+        content: "An error occurred while processing your request. Please try again later.",
+      };
+      setChatHistory(prev => [...prev, errorMessage]);
     }
   };
 
   return (
     <div className="h-[87vh] flex overflow-hidden">
       <div className="flex-1 flex flex-col bg-white overflow-hidden">
-        {/* Header with Model Selector */}
+        {/* Header with Model Selector - now fixed at top */}
         <div className="sticky top-0 z-10 bg-white pt-4 pb-2 px-4">
           <div className="max-w-[200px]">
             <ModelSelector />
           </div>
         </div>
 
-        {/* Chat Messages */}
+        {/* Chat Messages - only this section should scroll */}
         <div
           ref={chatContainerRef}
           className="flex-1 p-8 overflow-y-auto flex flex-col gap-6"
@@ -140,12 +135,15 @@ export default function ChatPage({ params }: { params: Promise<{ agentId: string
               </p>
             </div>
           ) : (
-            chatHistory.map((msg, index) =>
+            // Existing chat history rendering
+            chatHistory.map((msg, index) => (
               msg.role === 'user' ? (
+                // User Message
                 <div key={index} className="self-end bg-gray-100 p-4 rounded-2xl max-w-[80%]">
                   <p className="text-gray-800">{msg.content}</p>
                 </div>
               ) : (
+                // AI Response
                 <div key={index} className="flex gap-4 max-w-[80%]">
                   <img
                     src={agent?.avatar || "/agents/code.svg"}
@@ -162,13 +160,15 @@ export default function ChatPage({ params }: { params: Promise<{ agentId: string
                   </div>
                 </div>
               )
-            )
+            ))
           )}
         </div>
 
-        {/* Message Input */}
+        {/* Message Input - now fixed at bottom */}
         <div className="sticky bottom-0 z-10 w-full p-6 bg-gray-50">
-          <MessageInput onSend={handleSendMessage} />
+          <MessageInput
+            onSend={handleSendMessage}
+          />
         </div>
       </div>
     </div>
