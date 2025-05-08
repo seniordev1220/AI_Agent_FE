@@ -60,7 +60,7 @@ export default function AIAgentsPage() {
   if (selectedAgent && messages.length > 0) {
     // Show chat interface when there are messages
     return (
-      <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6 mb-32">
+      <div className="max-w-10xl mx-auto p-4 md:p-6 space-y-6 mb-32">
         {/* Chat Messages */}
         <div className="space-y-6">
           {messages.map((message) => (
@@ -73,7 +73,9 @@ export default function AIAgentsPage() {
                 className="rounded-full"
               />
               <div className="bg-gray-100 rounded-lg p-4 max-w-[80%]">
-                <p>{message.content}</p>
+                {message.content.split('\n').map((line, index) => (
+                  <p key={index}>{line}</p>
+                ))}
               </div>
             </div>
           ))}
