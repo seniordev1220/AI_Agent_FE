@@ -23,9 +23,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create stream from OpenAI
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4", // Replace with your desired model (e.g., "gpt-3.5-turbo")
       messages: [
         {
           role: "system",
@@ -34,25 +34,17 @@ export async function POST(request: Request) {
         ...messages,
       ],
       temperature: 0.7,
-      stream: true, // Enable streaming
     });
 
-    // Create and return a streaming response
-    const stream = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of response) {
-          const content = chunk.choices[0]?.delta?.content || '';
-          if (content) {
-            controller.enqueue(content);
-          }
-        }
-        controller.close();
-      },
-    });
+    // Extract assistant's response
+    const aiResponse = completion.choices[0].message.content || "I'm sorry, I couldn't generate a response.";
 
-    return new Response(stream);
+    // Return the response
+    return NextResponse.json({ response: aiResponse });
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error getting chat completion:', error);
+
+    // Return an error response
     return NextResponse.json(
       { error: 'An error occurred while processing your request.' },
       { status: 500 }
