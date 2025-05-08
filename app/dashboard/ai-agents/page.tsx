@@ -51,10 +51,69 @@ export default function AIAgentsPage() {
   const router = useRouter()
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleAgentClick = (agentId: string) => {
     console.log("Navigating to agent:", agentId)
     router.push(`/dashboard/chat/${agentId}`)
+  }
+
+  const handleSendMessage = async (message: string) => {
+    try {
+      setIsLoading(true)
+      
+      // Add user message immediately
+      const newUserMessage: Message = {
+        id: Date.now().toString(),
+        content: message,
+        role: 'user',
+        timestamp: new Date()
+      }
+      
+      // Create placeholder for assistant's message
+      const assistantMessageId = (Date.now() + 1).toString()
+      const assistantMessage: Message = {
+        id: assistantMessageId,
+        content: '',
+        role: 'assistant',
+        timestamp: new Date()
+      }
+      
+      setMessages(prev => [...prev, newUserMessage, assistantMessage])
+
+      // Send request to API
+      const response = await fetch('/api/openai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: message }]
+        })
+      })
+
+      if (!response.ok || !response.body) throw new Error('Stream error')
+
+      // Read the stream
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const text = decoder.decode(value)
+        
+        // Update the assistant's message with the new content
+        setMessages(prev => prev.map(msg => 
+          msg.id === assistantMessageId
+            ? { ...msg, content: msg.content + text }
+            : msg
+        ))
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (selectedAgent && messages.length > 0) {
@@ -81,7 +140,7 @@ export default function AIAgentsPage() {
           ))}
         </div>
 
-        <MessageInput />
+        <MessageInput onSend={handleSendMessage} />
       </div>
     )
   }
@@ -110,17 +169,7 @@ export default function AIAgentsPage() {
           </div>
         </div>
 
-        <MessageInput onSend={(message) => {
-          setMessages([
-            ...messages,
-            {
-              id: Date.now().toString(),
-              content: message,
-              role: 'user',
-              timestamp: new Date()
-            }
-          ])
-        }} />
+        <MessageInput onSend={handleSendMessage} />
       </div>
     )
   }
