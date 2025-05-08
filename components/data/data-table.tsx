@@ -1,18 +1,19 @@
 "use client"
-import { CheckCircle, XCircle, AlertCircle, RefreshCw } from "lucide-react"
+import { CheckCircle, XCircle, AlertCircle, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
+import { useState } from "react"
 
 interface DataSource {
   id: string
   icon: string
   name: string
-  status: "Verified" | "Outdated" | "Syncing"
+  status: "Verified" | "Outdated" | "Syncing" | "To verify"
   size: string
   owner: string
   lastSync: string
 }
 
-const dataSources: DataSource[] = [
+const initialDataSources: DataSource[] = [
   {
     id: "1",
     icon: "/icons/software.png",
@@ -39,6 +40,15 @@ const dataSources: DataSource[] = [
     size: "1 GB",
     owner: "Rahul G",
     lastSync: "Syncing"
+  },
+  {
+    id: "4",
+    icon: "/icons/software.png",
+    name: "Mancy",
+    status: "Verified",
+    size: "1 MB",
+    owner: "Jeff Sutherland",
+    lastSync: "3 days ago"
   },
   // Add more data sources as needed
 ]
@@ -70,8 +80,39 @@ const StatusText = ({ status }: { status: string }) => {
 }
 
 export function DataTable() {
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [dataSources, setDataSources] = useState<DataSource[]>(initialDataSources);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const totalPages = Math.ceil(dataSources.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = dataSources.slice(startIndex, endIndex);
+
+  const handleStatusChange = (sourceId: string, newStatus: DataSource['status']) => {
+    setDataSources(prev => 
+      prev.map(source =>
+        source.id === sourceId ? { ...source, status: newStatus } : source
+      )
+    );
+    setActiveDropdown(null);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div className="bg-white rounded-lg h-[66vh] shadow overflow-hidden">
       <table className="w-full">
         <thead>
           <tr className="border-b">
@@ -82,8 +123,8 @@ export function DataTable() {
             <th className="text-left p-4 text-sm font-medium text-gray-500">Last sync</th>
           </tr>
         </thead>
-        <tbody>
-          {dataSources.map((source) => (
+        <tbody className="overflow-y-auto">
+          {currentItems.map((source) => (
             <tr key={source.id} className="border-b hover:bg-gray-50">
               <td className="p-4">
                 <div className="flex items-center gap-3">
@@ -100,11 +141,43 @@ export function DataTable() {
                   </span>
                 </div>
               </td>
-              <td className="p-4">
-                <div className="flex items-center gap-2">
+              <td className="p-4 relative">
+                <div 
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={() => setActiveDropdown(activeDropdown === source.id ? null : source.id)}
+                >
                   <StatusIcon status={source.status} />
                   <span className="text-sm">{source.status}</span>
                 </div>
+                
+                {activeDropdown === source.id && (
+                  <div className="absolute z-50 top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg border z-10">
+                    <div className="py-1">
+                      <div className="px-3 py-2 text-sm text-gray-500 border-b">Change status:</div>
+                      <button
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                        onClick={() => handleStatusChange(source.id, "Verified")}
+                      >
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span>Mark as verified</span>
+                      </button>
+                      <button
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                        onClick={() => handleStatusChange(source.id, "Outdated")}
+                      >
+                        <XCircle className="h-4 w-4 text-red-500" />
+                        <span>Mark out of date</span>
+                      </button>
+                      <button
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                        onClick={() => handleStatusChange(source.id, "To verify")}
+                      >
+                        <AlertCircle className="h-4 w-4 text-orange-500" />
+                        <span>Mark to verify</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </td>
               <td className="p-4 text-sm">{source.size}</td>
               <td className="p-4">
@@ -112,7 +185,7 @@ export function DataTable() {
                   {source.owner}
                 </span>
               </td>
-              <td className="p-4">
+              <td className="p-4 hover:cursor-pointer">
                 <div className="flex items-center gap-2">
                   <span className="text-sm">{source.lastSync}</span>
                   {source.status === "Syncing" && (
@@ -124,6 +197,40 @@ export function DataTable() {
           ))}
         </tbody>
       </table>
+      
+      {/* Pagination Controls */}
+      <div className="border-t px-4 py-2 flex items-center justify-between">
+        <div className="text-sm text-gray-500">
+          Showing {startIndex + 1} to {Math.min(endIndex, dataSources.length)} of {dataSources.length} entries
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrevPage}
+            disabled={currentPage === 1}
+            className={`p-1 rounded ${
+              currentPage === 1 
+                ? 'text-gray-300 cursor-not-allowed' 
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages}
+            className={`p-1 rounded ${
+              currentPage === totalPages 
+                ? 'text-gray-300 cursor-not-allowed' 
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
     </div>
   )
 } 
