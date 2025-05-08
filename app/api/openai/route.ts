@@ -1,6 +1,7 @@
 // app/api/openai/route.ts
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { StreamingTextResponse, OpenAIStream } from 'ai';
 
 // Load environment variables
 require('dotenv').config();
@@ -12,7 +13,7 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    const { messages, category } = await request.json();
+    const { messages, instruction } = await request.json();
 
     // Validate input
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -22,28 +23,27 @@ export async function POST(request: Request) {
       );
     }
 
-    // Call OpenAI API
-    const completion = await openai.chat.completions.create({
+    // Create stream from OpenAI
+    const response = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: category || "You are a helpful AI assistant." // Use the agent's instruction or fallback
+          content: instruction || "You are a helpful AI assistant."
         },
         ...messages,
       ],
       temperature: 0.7,
+      stream: true, // Enable streaming
     });
 
-    // Extract assistant's response
-    const aiResponse = completion.choices[0].message.content || "I'm sorry, I couldn't generate a response.";
+    // Convert the response into a friendly stream
+    const stream = OpenAIStream(response);
 
-    // Return the response
-    return NextResponse.json({ response: aiResponse });
+    // Return a StreamingTextResponse, which can be consumed by the client
+    return new StreamingTextResponse(stream);
   } catch (error) {
     console.error('Error getting chat completion:', error);
-
-    // Return an error response
     return NextResponse.json(
       { error: 'An error occurred while processing your request.' },
       { status: 500 }
