@@ -12,8 +12,7 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    // Parse the request body
-    const { messages } = await request.json();
+    const { messages, category } = await request.json();
 
     // Validate input
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -25,11 +24,11 @@ export async function POST(request: Request) {
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
-      model: "gpt-4", // Replace with your desired model (e.g., "gpt-3.5-turbo")
+      model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: "You are a helpful sales agent who assists with Salesforce leads and booking meetings."
+          content: category || "You are a helpful AI assistant." // Use the agent's instruction or fallback
         },
         ...messages,
       ],

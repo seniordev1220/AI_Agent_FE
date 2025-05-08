@@ -4,18 +4,41 @@ import { useState, useRef, useEffect } from "react";
 import { Box } from "@mui/material";
 import { ModelSelector } from "@/components/ai-agents/model-selector";
 import { MessageInput } from "@/components/ai-agents/message-input";
+import React from "react";
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
 
-export default function ChatPage() {
+interface Agent {
+  id: string;
+  name: string;
+  avatar: string;
+  description: string;
+  instruction: string;
+  welcomeMessage: string;
+}
+
+export default function ChatPage({ params }: { params: Promise<{ agentId: string }> }) {
+  // Unwrap params using React.use()
+  const { agentId } = React.use(params);
+
   const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [agent, setAgent] = useState<Agent | null>(null);
 
   // Add ref for chat container
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Load agent data from localStorage
+  useEffect(() => {
+    const storedAgents = JSON.parse(localStorage.getItem('myAgents') || '[]') as Agent[];
+    const currentAgent = storedAgents.find((a) => a.id === agentId);
+    if (currentAgent) {
+      setAgent(currentAgent);
+    }
+  }, [agentId]);
 
   // Scroll to bottom whenever chat history updates
   useEffect(() => {
@@ -51,6 +74,7 @@ export default function ChatPage() {
             ...chatHistory.map(msg => ({ role: msg.role, content: msg.content })),
             { role: "user", content: message },
           ],
+          instruction: agent?.instruction,
         }),
       });
 
@@ -98,16 +122,16 @@ export default function ChatPage() {
           {chatHistory.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center">
               <img
-                src="/agents/code.svg"
-                alt="Sales Agent"
+                src={agent?.avatar || "/agents/code.svg"}
+                alt={agent?.name || "AI Agent"}
                 className="w-24 h-24 rounded-full mb-4"
               />
-              <h2 className="text-xl font-semibold mb-2">Sales Agent</h2>
+              <h2 className="text-xl font-semibold mb-2">{agent?.name || "AI Agent"}</h2>
               <p className="text-gray-600 text-center mb-2">
-                Enrich leads in Salesforce, help book meetings with prospect information.
+                {agent?.description || "Loading agent description..."}
               </p>
               <p className="text-gray-500 text-center max-w-[600px]">
-                Hello! I'm your go-to expert for reaching out to potential clients, expanding your network, and helping you meet your sales targets. Ready to start?
+                {agent?.welcomeMessage || "Hello! How can I help you today?"}
               </p>
             </div>
           ) : (
@@ -122,12 +146,12 @@ export default function ChatPage() {
                 // AI Response
                 <div key={index} className="flex gap-4 max-w-[80%]">
                   <img
-                    src="/agents/code.svg"
-                    alt="Sales Agent"
+                    src={agent?.avatar || "/agents/code.svg"}
+                    alt={agent?.name || "AI Agent"}
                     className="w-12 h-12 rounded-full"
                   />
                   <div>
-                    <p className="font-medium mb-2">Sales Agent</p>
+                    <p className="font-medium mb-2">{agent?.name || "AI Agent"}</p>
                     <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm">
                       <div className="space-y-4 whitespace-pre-wrap">
                         {msg.content}
@@ -143,8 +167,6 @@ export default function ChatPage() {
         {/* Message Input - now fixed at bottom */}
         <div className="sticky bottom-0 z-10 w-full p-6 bg-gray-50">
           <MessageInput
-            message={message}
-            setMessage={setMessage}
             onSend={handleSendMessage}
           />
         </div>

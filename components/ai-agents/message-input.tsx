@@ -6,12 +6,10 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 
 interface MessageInputProps {
-  message: string;
-  setMessage: (message: string) => void;
   onSend?: (message: string) => void;
 }
 
-export function MessageInput({ message, setMessage, onSend }: MessageInputProps) {
+export function MessageInput({ onSend }: MessageInputProps) {
   const [isFocused, setIsFocused] = useState(false);
 
   // Initialize TipTap editor

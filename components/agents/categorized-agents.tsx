@@ -45,7 +45,7 @@ interface CategorizedAgentsProps {
 
 export function CategorizedAgents({ selectedCategory }: CategorizedAgentsProps) {
   const router = useRouter()
-  const [allAgents, setAllAgents] = useState<Agent[]>(defaultAgents)
+  const [allAgents, setAllAgents] = useState<Agent[]>()
 
   useEffect(() => {
     // Get custom agents from localStorage
@@ -63,14 +63,14 @@ export function CategorizedAgents({ selectedCategory }: CategorizedAgentsProps) 
     } catch {
       myAgents = []
     }
-    setAllAgents([...defaultAgents, ...myAgents])
+    setAllAgents([...myAgents])
   }, [])
 
-  const filteredAgents = allAgents.filter(agent =>
+  const filteredAgents = allAgents?.filter(agent =>
     selectedCategory === "My Agents"
       ? allAgents
       : agent.category === selectedCategory
-  )
+  ) || []
 
   if (filteredAgents.length === 0) {
     return (
