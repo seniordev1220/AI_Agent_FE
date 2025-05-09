@@ -12,7 +12,7 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    const { messages, category } = await request.json();
+    const { messages, name } = await request.json();
 
     // Validate input
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content: category || "You are a helpful AI assistant." // Use the agent's instruction or fallback
+          content: name || "You are a helpful AI assistant." // Use the agent's instruction or fallback
         },
         ...messages,
       ],

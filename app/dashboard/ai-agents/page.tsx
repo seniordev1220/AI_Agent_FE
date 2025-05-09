@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { ChevronDown, Plus, Image as ImageIcon, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -23,34 +23,46 @@ interface Agent {
   greeting: string
 }
 
-const agents: Agent[] = [
-  {
-    id: "1",
-    name: "Sales Agent",
-    avatar: "/agents/code.svg",
-    description: "Enrich leads in Salesforce, help book meetings with prospect information.",
-    greeting: "Hello! I'm your go-to expert for reaching out to potential clients, expanding your network, and helping you meet your sales targets. Ready to start?"
-  },
-  {
-    id: "2",
-    name: "HR Onboarding Agent",
-    avatar: "/agents/code.svg",
-    description: "Help with employee onboarding and HR processes.",
-    greeting: "Hi there! I'm here to help with all your HR and onboarding needs. What can I assist you with today?"
-  },
-  {
-    id: "3",
-    name: "IT Support Agent",
-    avatar: "/agents/code.svg",
-    description: "Debug code, make product decisions with guidance and best practises.",
-    greeting: "Hello! I'm your IT support specialist. How can I help you today?"
-  }
-]
-
 export default function AIAgentsPage() {
   const router = useRouter()
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
+  const [agents, setAgents] = useState<Agent[]>([])
+
+  useEffect(() => {
+    // Load agents from localStorage on component mount
+    const loadAgents = () => {
+      const storedAgents = localStorage.getItem('myAgents')
+      if (storedAgents) {
+        setAgents(JSON.parse(storedAgents))
+      }
+    }
+
+    loadAgents()
+  }, [])
+
+  // Function to add new agent
+  const addAgent = (newAgent: Agent) => {
+    const updatedAgents = [...agents, newAgent]
+    setAgents(updatedAgents)
+    localStorage.setItem('myAgents', JSON.stringify(updatedAgents))
+  }
+
+  // Function to update existing agent
+  const updateAgent = (updatedAgent: Agent) => {
+    const updatedAgents = agents.map(agent => 
+      agent.id === updatedAgent.id ? updatedAgent : agent
+    )
+    setAgents(updatedAgents)
+    localStorage.setItem('myAgents', JSON.stringify(updatedAgents))
+  }
+
+  // Function to delete agent
+  const deleteAgent = (agentId: string) => {
+    const updatedAgents = agents.filter(agent => agent.id !== agentId)
+    setAgents(updatedAgents)
+    localStorage.setItem('myAgents', JSON.stringify(updatedAgents))
+  }
 
   const handleAgentClick = (agentId: string) => {
     console.log("Navigating to agent:", agentId)
@@ -131,7 +143,6 @@ export default function AIAgentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <ModelSelector />
-        <Button variant="ghost">Profile</Button>
       </div>
 
       {/* Main Content */}
@@ -145,30 +156,36 @@ export default function AIAgentsPage() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Your AI Agents</h2>
           <Button variant="link" className="text-gray-600">
-            View all (33)
+            View all ({agents.length})
           </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {agents.map((agent) => (
-            <div 
-              key={agent.id} 
-              className="flex gap-4 items-start cursor-pointer hover:bg-gray-50 p-4 rounded-lg transition-colors"
-              onClick={() => handleAgentClick(agent.id)}
-            >
-              <Image
-                src={agent.avatar}
-                alt={agent.name}
-                width={64}
-                height={64}
-                className="rounded-full"
-              />
-              <div>
-                <h3 className="font-medium mb-1">{agent.name}</h3>
-                <p className="text-gray-600 text-sm">{agent.description}</p>
+          {agents.length > 0 ? (
+            agents.map((agent) => (
+              <div 
+                key={agent.id} 
+                className="flex gap-4 items-start cursor-pointer hover:bg-gray-50 p-4 rounded-lg transition-colors"
+                onClick={() => handleAgentClick(agent.id)}
+              >
+                <Image
+                  src={agent.avatar}
+                  alt={agent.name}
+                  width={64}
+                  height={64}
+                  className="rounded-full"
+                />
+                <div>
+                  <h3 className="font-medium mb-1">{agent.name}</h3>
+                  <p className="text-gray-600 text-sm">{agent.description}</p>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="col-span-2 text-center py-8 text-gray-500">
+              No agents found. Create your first agent to get started.
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
