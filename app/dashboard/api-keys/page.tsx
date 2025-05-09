@@ -1,6 +1,6 @@
 "use client"
 import { useState } from 'react'
-import { Box, Typography, Button, Paper, Stack, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material'
+import { Box, Typography, Button, Paper, Stack, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, AlertTitle } from '@mui/material'
 import Image from 'next/image'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import { styled } from '@mui/material/styles'
@@ -51,6 +51,7 @@ export default function ApiKeysPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [currentProvider, setCurrentProvider] = useState<string>('')
   const [newApiKey, setNewApiKey] = useState('')
+  const [errorMessage, setErrorMessage] = useState<string>('')
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([
     { 
       provider: 'OpenAI', 
@@ -112,9 +113,15 @@ export default function ApiKeysPage() {
             : k
         ))
         setIsDialogOpen(false)
+        setErrorMessage('')
       } else {
-        // You might want to show an error message here
-        alert(`Invalid API key format for ${currentProvider}`)
+        const provider = apiKeys.find(k => k.provider === currentProvider)
+        if (provider) {
+          const message = provider.prefix 
+            ? `Invalid API key format for ${currentProvider}. Key must start with "${provider.prefix}" and be ${provider.keyLength} characters long.`
+            : `Invalid API key format for ${currentProvider}. Key must be ${provider.keyLength} characters long.`
+          setErrorMessage(message)
+        }
       }
     }
   }
@@ -185,7 +192,10 @@ export default function ApiKeysPage() {
       {/* Update API Key Dialog */}
       <Dialog 
         open={isDialogOpen} 
-        onClose={() => setIsDialogOpen(false)}
+        onClose={() => {
+          setIsDialogOpen(false)
+          setErrorMessage('')
+        }}
         maxWidth="sm"
         fullWidth
       >
@@ -193,6 +203,12 @@ export default function ApiKeysPage() {
           Update {currentProvider} API Key
         </DialogTitle>
         <DialogContent>
+          {errorMessage && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              <AlertTitle>Error</AlertTitle>
+              {errorMessage}
+            </Alert>
+          )}
           <TextField
             autoFocus
             margin="dense"

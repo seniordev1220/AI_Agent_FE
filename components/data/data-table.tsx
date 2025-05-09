@@ -16,8 +16,8 @@ interface DataSource {
 const initialDataSources: DataSource[] = [
   {
     id: "1",
-    icon: "/icons/software.png",
-    name: "Software",
+    icon: "/data_icon/dropbox.svg",
+    name: "OneDrive",
     status: "Verified",
     size: "1 MB",
     owner: "Jeff Sutherland",
@@ -25,7 +25,7 @@ const initialDataSources: DataSource[] = [
   },
   {
     id: "2",
-    icon: "/icons/pdf.png",
+    icon: "/data_icon/google-drive.svg",
     name: "PDF file insurance",
     status: "Outdated",
     size: "5.6 MB",
@@ -34,21 +34,12 @@ const initialDataSources: DataSource[] = [
   },
   {
     id: "3",
-    icon: "/icons/google-drive.png",
+    icon: "/data_icon/onedrive.svg",
     name: "Sales prospect list",
     status: "Verified",
     size: "1 GB",
     owner: "Rahul G",
     lastSync: "Syncing"
-  },
-  {
-    id: "4",
-    icon: "/icons/software.png",
-    name: "Mancy",
-    status: "Verified",
-    size: "1 MB",
-    owner: "Jeff Sutherland",
-    lastSync: "3 days ago"
   },
   // Add more data sources as needed
 ]

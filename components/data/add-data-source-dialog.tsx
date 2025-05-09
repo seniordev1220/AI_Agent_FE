@@ -2,6 +2,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { X } from "lucide-react"
 import Image from "next/image"
+import { useState } from "react"
+import { ConnectSourceModal } from "../connect-source-modal"
 
 interface DataSourceOption {
   id: string
@@ -81,45 +83,61 @@ interface AddDataSourceDialogProps {
 }
 
 export function AddDataSourceDialog({ open, onOpenChange }: AddDataSourceDialogProps) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">Connect Your Data Sources</DialogTitle>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </DialogHeader>
+  const [selectedSource, setSelectedSource] = useState<string | null>(null);
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4">
-          {dataSourceOptions.map((source) => (
+  const handleSourceClick = (source: DataSourceOption) => {
+    setSelectedSource(source.name);
+    setIsConnectModalOpen(true);
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Connect Your Data Sources</DialogTitle>
             <button
-              key={source.id}
-              className="flex flex-col items-center justify-center p-4 rounded-lg border hover:border-gray-400 transition-colors"
-              onClick={() => {
-                // Handle connection logic here
-                console.log(`Connecting to ${source.name}`)
-              }}
+              onClick={() => onOpenChange(false)}
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
             >
-              <div className="w-12 h-12 relative mb-2">
-                <Image
-                  src={source.icon}
-                  alt={source.name}
-                  fill
-                  className="object-contain"
-                />
-              </div>
-              <span className="text-sm font-medium">{source.name}</span>
-              {source.description && (
-                <span className="text-xs text-gray-500">{source.description}</span>
-              )}
+              <X className="h-4 w-4" />
             </button>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4">
+            {dataSourceOptions.map((source) => (
+              <button
+                key={source.id}
+                className="flex flex-col items-center justify-center p-4 rounded-lg border hover:border-gray-400 transition-colors"
+                onClick={() => handleSourceClick(source)}
+              >
+                <div className="w-12 h-12 relative mb-2">
+                  <Image
+                    src={source.icon}
+                    alt={source.name}
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+                <span className="text-sm font-medium">{source.name}</span>
+                {source.description && (
+                  <span className="text-xs text-gray-500">{source.description}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ConnectSourceModal
+        isOpen={isConnectModalOpen}
+        onClose={() => {
+          setIsConnectModalOpen(false);
+          setSelectedSource(null);
+        }}
+        selectedSource={selectedSource}
+      />
+    </>
   )
 } 
