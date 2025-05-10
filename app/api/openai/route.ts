@@ -23,13 +23,7 @@ export async function POST(request: Request) {
     }
 
     // Construct the system message using agent properties
-    const systemMessage = `You are an AI assistant specialized as a ${agent.category}.
-${agent.description}
-
-Instructions for interaction:
-${agent.instructions}
-
-Name: ${agent.name}`;
+    const systemMessage = `You are an AI assistant specialized as a ${agent.category}.${agent.description}`;
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
