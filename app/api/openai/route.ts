@@ -12,7 +12,7 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    const { messages, agent } = await request.json();
+    const { messages, category } = await request.json();
 
     // Validate input
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     }
 
     // Construct the system message using agent properties
-    const systemMessage = `You are an AI assistant specialized as a ${agent.category}.${agent.description}`;
+    const systemMessage = `You are an AI assistant specialized as a ${category}`;
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
