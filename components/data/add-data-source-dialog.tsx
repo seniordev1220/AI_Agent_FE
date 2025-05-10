@@ -96,13 +96,16 @@ export function AddDataSourceDialog({ open, onOpenChange }: AddDataSourceDialogP
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">Connect Your Data Sources</DialogTitle>
-            <button
-              onClick={() => onOpenChange(false)}
-              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <DialogTitle className="text-xl font-semibold">
+              Connect Your Data Sources
+              <button
+                onClick={() => onOpenChange(false)}
+                className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </DialogTitle>
+            
           </DialogHeader>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4">
