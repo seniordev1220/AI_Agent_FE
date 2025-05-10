@@ -123,9 +123,17 @@ export function MessageInput({ onSend }: MessageInputProps) {
 
   const insertGeneratedImage = () => {
     if (generatedImage && editor) {
-      // Insert the image into the editor (you'll need to implement this based on your needs)
-      // For example, you might want to insert it as a markdown image or HTML
+      // Insert the image into the editor
       editor.commands.setContent(`${editor.getHTML()}<img src="${generatedImage}" alt="${imagePrompt}" />`);
+      
+      // Send the message with the image
+      const messageContent = editor.getHTML();
+      onSend?.(messageContent);
+      
+      // Clear the editor
+      editor.commands.setContent('');
+      
+      // Reset the image generation state
       setIsImageModalOpen(false);
       setGeneratedImage(null);
       setImagePrompt("");
