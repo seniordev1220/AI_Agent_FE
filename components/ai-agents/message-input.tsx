@@ -91,6 +91,7 @@ export function MessageInput({ onSend }: MessageInputProps) {
     
     setIsGenerating(true);
     try {
+      console.log('Sending request to generate image...');
       const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: {
@@ -99,10 +100,22 @@ export function MessageInput({ onSend }: MessageInputProps) {
         body: JSON.stringify({ prompt: imagePrompt }),
       });
       
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('Received image URL:', data.imageUrl);
+      
+      if (!data.imageUrl) {
+        throw new Error('No image URL received');
+      }
+      
       setGeneratedImage(data.imageUrl);
     } catch (error) {
       console.error('Failed to generate image:', error);
+      // You might want to show an error message to the user
+      alert('Failed to generate image. Please try again.');
     } finally {
       setIsGenerating(false);
     }
