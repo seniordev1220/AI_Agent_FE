@@ -1,9 +1,17 @@
 "use client";
-import { Plus, FileCode, Image as ImageIcon, ArrowRight, Bold, Italic, Code } from "lucide-react";
+import { Plus, FileCode, Image as ImageIcon, ArrowRight, Bold, Italic, Code, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface MessageInputProps {
   onSend?: (message: string) => void;
@@ -11,6 +19,10 @@ interface MessageInputProps {
 
 export function MessageInput({ onSend }: MessageInputProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
 
   // Initialize TipTap editor
   const editor = useEditor({
@@ -74,6 +86,39 @@ export function MessageInput({ onSend }: MessageInputProps) {
     editor.commands.setContent('');
   };
 
+  const handleImageGeneration = async () => {
+    if (!imagePrompt) return;
+    
+    setIsGenerating(true);
+    try {
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: imagePrompt }),
+      });
+      
+      const data = await response.json();
+      setGeneratedImage(data.imageUrl);
+    } catch (error) {
+      console.error('Failed to generate image:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const insertGeneratedImage = () => {
+    if (generatedImage && editor) {
+      // Insert the image into the editor (you'll need to implement this based on your needs)
+      // For example, you might want to insert it as a markdown image or HTML
+      editor.commands.setContent(`${editor.getHTML()}<img src="${generatedImage}" alt="${imagePrompt}" />`);
+      setIsImageModalOpen(false);
+      setGeneratedImage(null);
+      setImagePrompt("");
+    }
+  };
+
   return (
     <div className="w-full">
       <div>
@@ -130,6 +175,7 @@ export function MessageInput({ onSend }: MessageInputProps) {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setIsImageModalOpen(true)}
                   className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"
                 >
                   <ImageIcon className="h-4 w-4" />
@@ -148,6 +194,53 @@ export function MessageInput({ onSend }: MessageInputProps) {
           </div>
         </form>
       </div>
+
+      {/* Image Generation Modal */}
+      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Generate Image</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="prompt">Prompt</Label>
+              <Input
+                id="prompt"
+                value={imagePrompt}
+                onChange={(e) => setImagePrompt(e.target.value)}
+                placeholder="Describe the image you want to generate..."
+              />
+            </div>
+            {generatedImage && (
+              <div className="relative">
+                <img
+                  src={generatedImage}
+                  alt={imagePrompt}
+                  className="w-full rounded-lg"
+                />
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsImageModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              {generatedImage ? (
+                <Button onClick={insertGeneratedImage}>Insert Image</Button>
+              ) : (
+                <Button
+                  onClick={handleImageGeneration}
+                  disabled={isGenerating || !imagePrompt}
+                >
+                  {isGenerating ? "Generating..." : "Generate"}
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
