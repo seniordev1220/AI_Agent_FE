@@ -14,31 +14,6 @@ interface Agent {
   category: string
 }
 
-const defaultAgents: Agent[] = [
-  {
-    id: "1",
-    name: "Sales Agent",
-    description: "Enrich leads in Salesforce, help book meetings with prospect information.",
-    avatar: "/agents/code.svg",
-    category: "Sales"
-  },
-  {
-    id: "2",
-    name: "Data Analyst",
-    description: "Extract valuable information from complex data.",
-    avatar: "/agents/code.svg",
-    category: "Tech"
-  },
-  {
-    id: "3",
-    name: "Competitor Market Research Agent",
-    description: "Generate reports that secure more deals for the team.",
-    avatar: "/agents/code.svg",
-    category: "Research"
-  },
-  // Add more agents as needed
-]
-
 interface CategorizedAgentsProps {
   selectedCategory: string
 }

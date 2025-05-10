@@ -1,7 +1,6 @@
 // app/chat/page.tsx
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { Box } from "@mui/material";
 import { ModelSelector } from "@/components/ai-agents/model-selector";
 import { MessageInput } from "@/components/ai-agents/message-input";
 import React from "react";

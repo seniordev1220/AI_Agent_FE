@@ -12,7 +12,7 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    const { messages, name } = await request.json();
+    const { messages, agent } = await request.json();
 
     // Validate input
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -22,13 +22,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Construct the system message using agent properties
+    const systemMessage = `You are an AI assistant specialized as a ${agent.category}.
+${agent.description}
+
+Instructions for interaction:
+${agent.instructions}
+
+Name: ${agent.name}`;
+
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: name || "You are a helpful AI assistant." // Use the agent's instruction or fallback
+          content: systemMessage
         },
         ...messages,
       ],
