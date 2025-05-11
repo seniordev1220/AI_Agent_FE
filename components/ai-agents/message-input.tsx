@@ -36,21 +36,17 @@ export function MessageInput({ onSend }: MessageInputProps) {
     },
     editorProps: {
       handleKeyDown: (view, event) => {
-        // If Ctrl+Enter is pressed, allow default behavior (new line)
         if (event.key === 'Enter' && (event.shiftKey || event.metaKey)) {
           return false;
         }
         
-        // If just Enter is pressed, prevent default and submit
         if (event.key === 'Enter') {
           event.preventDefault();
-          if (editor && editor.getText().trim()) {
-            const lines = editor.getText().trim().split('\n');
-            onSend?.(lines.join('\n'));  // Use \n for newlines
+          if (editor && editor.getHTML().trim()) {
+            onSend?.(editor.getHTML().trim());  // Send HTML content instead of plain text
             editor.commands.setContent('');
-            // Reset height after clearing content
             const element = editor.view.dom as HTMLElement;
-            element.style.height = '40px'; // Set to initial height
+            element.style.height = '40px';
           }
           return true;
         }
@@ -79,10 +75,9 @@ export function MessageInput({ onSend }: MessageInputProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editor || !editor.getText().trim()) return;
+    if (!editor || !editor.getHTML().trim()) return;
 
-    const lines = editor.getText().trim().split('\n');
-    onSend?.(lines.join('\n')); // Use \n for newlines
+    onSend?.(editor.getHTML().trim()); // Send HTML content instead of plain text
     editor.commands.setContent('');
   };
 

@@ -137,12 +137,13 @@ export default function ChatPage({ params }: { params: Promise<{ agentId: string
             // Existing chat history rendering
             chatHistory.map((msg, index) => (
               msg.role === 'user' ? (
-                // User Message
                 <div key={index} className="self-end bg-gray-100 p-4 rounded-2xl max-w-[80%]">
-                  <p className="text-gray-800">{msg.content}</p>
+                  <div 
+                    className="text-gray-800"
+                    dangerouslySetInnerHTML={{ __html: msg.content }}
+                  />
                 </div>
               ) : (
-                // AI Response
                 <div key={index} className="flex gap-4 max-w-[80%]">
                   <img
                     src={agent?.avatar || "/agents/code.svg"}
@@ -152,9 +153,10 @@ export default function ChatPage({ params }: { params: Promise<{ agentId: string
                   <div>
                     <p className="font-medium mb-2">{agent?.name || "AI Agent"}</p>
                     <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm">
-                      <div className="space-y-4 whitespace-pre-wrap">
-                        {msg.content}
-                      </div>
+                      <div 
+                        className="space-y-4 whitespace-pre-wrap"
+                        dangerouslySetInnerHTML={{ __html: msg.content }}
+                      />
                     </div>
                   </div>
                 </div>
