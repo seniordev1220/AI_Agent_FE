@@ -86,7 +86,7 @@ export function MessageInput({ onSend }: MessageInputProps) {
     
     setIsGenerating(true);
     try {
-      console.log('Sending request to generate image...');
+      // First generate the image
       const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: {
@@ -100,16 +100,38 @@ export function MessageInput({ onSend }: MessageInputProps) {
       }
       
       const data = await response.json();
-      console.log('Received image URL:', data.imageUrl);
       
       if (!data.imageUrl) {
         throw new Error('No image URL received');
       }
+
+      // Download the image and convert to blob
+      const imageResponse = await fetch(data.imageUrl);
+      const imageBlob = await imageResponse.blob();
+
+      // Create a File object from the blob
+      const imageFile = new File([imageBlob], `generated-${Date.now()}.png`, {
+        type: 'image/png'
+      });
+
+      // Upload the file to your storage (e.g., S3, Firebase, etc.)
+      const formData = new FormData();
+      formData.append('file', imageFile);
+
+      const uploadResponse = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const uploadData = await uploadResponse.json();
+      setGeneratedImage(uploadData.imageUrl); // This should be your permanent storage URL
       
-      setGeneratedImage(data.imageUrl);
     } catch (error) {
-      console.error('Failed to generate image:', error);
-      // You might want to show an error message to the user
+      console.error('Failed to generate/upload image:', error);
       alert('Failed to generate image. Please try again.');
     } finally {
       setIsGenerating(false);
