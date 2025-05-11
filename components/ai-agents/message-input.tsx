@@ -118,17 +118,22 @@ export function MessageInput({ onSend }: MessageInputProps) {
 
   const insertGeneratedImage = () => {
     if (generatedImage && editor) {
-      // Insert the image into the editor
-      editor.commands.setContent(`${editor.getHTML()}<img src="${generatedImage}" alt="${imagePrompt}" />`);
+      // Insert the image with specific styling
+      const imageHtml = `<img src="${generatedImage}" alt="${imagePrompt}" style="max-width: 100%; border-radius: 8px; margin: 8px 0;" />`;
       
-      // Send the message with the image
-      const messageContent = editor.getHTML();
-      onSend?.(messageContent);
+      // If there's existing content, add a line break before the image
+      const currentContent = editor.getHTML().trim();
+      const newContent = currentContent 
+        ? `${currentContent}<br/>${imageHtml}` 
+        : imageHtml;
       
-      // Clear the editor
+      editor.commands.setContent(newContent);
+      
+      // Send the message immediately
+      onSend?.(newContent);
+      
+      // Clear the editor and reset states
       editor.commands.setContent('');
-      
-      // Reset the image generation state
       setIsImageModalOpen(false);
       setGeneratedImage(null);
       setImagePrompt("");

@@ -139,7 +139,7 @@ export default function ChatPage({ params }: { params: Promise<{ agentId: string
               msg.role === 'user' ? (
                 <div key={index} className="self-end bg-gray-100 p-4 rounded-2xl max-w-[80%]">
                   <div 
-                    className="text-gray-800"
+                    className="text-gray-800 prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
                     dangerouslySetInnerHTML={{ __html: msg.content }}
                   />
                 </div>
@@ -154,7 +154,7 @@ export default function ChatPage({ params }: { params: Promise<{ agentId: string
                     <p className="font-medium mb-2">{agent?.name || "AI Agent"}</p>
                     <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm">
                       <div 
-                        className="space-y-4 whitespace-pre-wrap"
+                        className="space-y-4 whitespace-pre-wrap prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
                         dangerouslySetInnerHTML={{ __html: msg.content }}
                       />
                     </div>
