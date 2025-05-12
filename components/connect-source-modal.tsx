@@ -3,7 +3,7 @@ import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { useState } from "react"
 import { Label } from "./ui/label"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, RefreshCw, CheckCircle } from "lucide-react"
 
 interface ConnectSourceModalProps {
   isOpen: boolean
@@ -29,6 +29,7 @@ interface ValidationError {
 export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectSourceModalProps) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success'>('idle');
 
   const getSourceFields = (): SourceField[] => {
     switch (selectedSource) {
@@ -211,8 +212,51 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
     e.preventDefault();
     if (validateForm()) {
       try {
-        // Here you would handle the connection logic
-        console.log('Connecting with:', formData);
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Calculate total size for uploaded files
+        let totalSize = "0 MB";
+        if (selectedSource === "Upload Files" && formData.files) {
+          const files = formData.files as File[];
+          const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+          
+          // Convert bytes to appropriate unit
+          if (totalBytes < 1024 * 1024) {
+            totalSize = `${(totalBytes / 1024).toFixed(1)} KB`;
+          } else if (totalBytes < 1024 * 1024 * 1024) {
+            totalSize = `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
+          } else {
+            totalSize = `${(totalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+          }
+        }
+
+        // Get user name from browser or system
+        const owner = localStorage.getItem('userName') || 
+                     (typeof window !== 'undefined' && window.navigator?.userAgent.includes('Windows') ? 
+                     'Windows User' : 'Current User');
+
+        // Add new source to localStorage with ISO timestamp
+        const existingSources = JSON.parse(localStorage.getItem('dataSources') || '[]');
+        const newSource = {
+          id: Date.now().toString(),
+          icon: selectedSource === "Upload Files" ? 
+                "/data_icon/file-icon.svg" : 
+                `/data_icon/${selectedSource?.toLowerCase().replace(' ', '-')}.svg`,
+          name: selectedSource === "Upload Files" ? 
+                (formData.files?.[0]?.name || "Uploaded Files") :
+                selectedSource,
+          status: "Verified" as const,
+          size: totalSize,
+          owner: "Current User",
+          lastSync: new Date().toISOString() // Store as ISO string
+        };
+        
+        localStorage.setItem('dataSources', JSON.stringify([...existingSources, newSource]));
+        
+        // Dispatch a custom event to notify DataTable
+        window.dispatchEvent(new Event('sourceAdded'));
+        
         onClose();
       } catch (error) {
         setErrors([{ field: 'general', message: 'Connection failed. Please try again.' }]);
@@ -224,8 +268,14 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleFileChange = (key: string, files: File[]) => {
-    // Handle file change logic
+  const handleFileChange = async (key: string, files: File[]) => {
+    setUploadStatus('uploading');
+    
+    // Simulate file upload delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    setFormData(prev => ({ ...prev, [key]: files }));
+    setUploadStatus('success');
   };
 
   const getFieldError = (fieldKey: string) => {
@@ -253,18 +303,26 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
                   placeholder={field.placeholder}
                 />
               ) : field.type === 'file' ? (
-                <Input
-                  id={field.key}
-                  type="file"
-                  multiple={field.multiple}
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    handleFileChange(field.key, files);
-                  }}
-                  required={field.required !== false}
-                  accept={field.accept}
-                  className={getFieldError(field.key) ? 'border-red-500' : ''}
-                />
+                <div className="relative">
+                  <Input
+                    id={field.key}
+                    type="file"
+                    multiple={field.multiple}
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      handleFileChange(field.key, files);
+                    }}
+                    required={field.required !== false}
+                    accept={field.accept}
+                    className={getFieldError(field.key) ? 'border-red-500' : ''}
+                  />
+                  {uploadStatus === 'uploading' && (
+                    <RefreshCw className="h-4 w-4 text-blue-500 animate-spin absolute right-3 top-1/2 -translate-y-1/2" />
+                  )}
+                  {uploadStatus === 'success' && (
+                    <CheckCircle className="h-4 w-4 text-green-500 absolute right-3 top-1/2 -translate-y-1/2" />
+                  )}
+                </div>
               ) : (
                 <Input
                   id={field.key}

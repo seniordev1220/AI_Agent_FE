@@ -1,7 +1,8 @@
 "use client"
 import { CheckCircle, XCircle, AlertCircle, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { format, formatDistanceToNow } from 'date-fns'
 
 interface DataSource {
   id: string
@@ -75,6 +76,50 @@ export function DataTable() {
   const [dataSources, setDataSources] = useState<DataSource[]>(initialDataSources);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
+  const loadDataSources = () => {
+    const savedSources = localStorage.getItem('dataSources');
+    if (savedSources) {
+      const parsedSources = JSON.parse(savedSources);
+      setDataSources([...initialDataSources, ...parsedSources]);
+    }
+  };
+
+  useEffect(() => {
+    loadDataSources();
+
+    // Add event listener for new sources
+    const handleSourceAdded = () => {
+      loadDataSources();
+    };
+
+    window.addEventListener('sourceAdded', handleSourceAdded);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('sourceAdded', handleSourceAdded);
+    };
+  }, []);
+
+  // Function to format the lastSync timestamp
+  const formatLastSync = (timestamp: string) => {
+    try {
+      if (timestamp === "Just now") return timestamp;
+      const date = new Date(timestamp);
+      
+      // Show exact date/time when hovering
+      const exactDateTime = format(date, 'PPpp'); // e.g., "Apr 29, 2023, 3:00 PM"
+      const relativeTime = formatDistanceToNow(date, { addSuffix: true }); // e.g., "2 hours ago"
+      
+      return (
+        <span title={exactDateTime}>
+          {relativeTime}
+        </span>
+      );
+    } catch {
+      return timestamp;
+    }
+  };
 
   const totalPages = Math.ceil(dataSources.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -178,7 +223,7 @@ export function DataTable() {
               </td>
               <td className="p-4 hover:cursor-pointer">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">{source.lastSync}</span>
+                  <span className="text-sm">{formatLastSync(source.lastSync)}</span>
                   {source.status === "Syncing" && (
                     <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
                   )}

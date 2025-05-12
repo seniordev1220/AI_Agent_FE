@@ -186,6 +186,13 @@ export default function AIAgentsPage() {
           )}
         </div>
       </div>
+
+      {/* Message Input at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white p-4">
+        <div className="max-w-6xl mx-auto">
+          <MessageInput />
+        </div>
+      </div>
     </div>
   )
 } 
