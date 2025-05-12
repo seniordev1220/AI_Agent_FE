@@ -214,6 +214,12 @@ export function MessageInput({ onSend }: MessageInputProps) {
             </div>
           </div>
         </form>
+
+        {/* Add hint text */}
+        <div className="text-center text-sm text-gray-500 mt-2">
+          <p>Type / to reference information in the knowledge base</p>
+          <p>Type @ to mention an AI Agent</p>
+        </div>
       </div>
 
       {/* Image Generation Modal */}

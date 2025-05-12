@@ -12,7 +12,7 @@ export const sidebarNav = [
 export const automationNav = [
     { label: "Data & Knowledge Base", icon: "folder", href: "/dashboard/data" },
     { label: "My Agents", icon: "users", href: "/dashboard/my-agents" },
-    { label: "Integrations", icon: "share", href: "/dashboard/integrations" },
+    { label: "Integrations", icon: "share", href: "/dashboard/integration" },
 ];
 
 // Bottom section items
