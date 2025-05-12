@@ -123,16 +123,17 @@ export default function IntegrationPage() {
   }
 
   return (
-    <Box sx={{ p: 4, maxWidth: '1200px', margin: '0 auto' }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: '1200px', margin: '0 auto' }}>
       {/* Fixed Header */}
       <Box sx={{ 
         display: 'flex', 
+        flexDirection: { xs: 'column', md: 'row' },
         justifyContent: 'space-between', 
-        alignItems: 'center',
+        alignItems: { xs: 'flex-start', md: 'center' },
         mb: 4 
       }}>
         <Box>
-          <Typography variant="h4" sx={{ mb: 1 }}>
+          <Typography variant="h4" sx={{ mb: 1, fontSize: { xs: '1.5rem', md: '2rem' } }}>
             Integration & deployment
           </Typography>
           <Typography variant="body1" color="text.secondary">
@@ -142,9 +143,16 @@ export default function IntegrationPage() {
       </Box>
 
       {/* Main Content */}
-      <Box sx={{ display: 'flex', gap: 4 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', md: 'row' },
+        gap: 4 
+      }}>
         {/* Left Sidebar */}
-        <Box sx={{ width: 200 }}>
+        <Box sx={{ 
+          width: { xs: '100%', md: 200 },
+          mb: { xs: 3, md: 0 }
+        }}>
           <Typography variant="h6" sx={{ mb: 2, color: 'text.secondary' }}>
             Integration
           </Typography>
@@ -152,8 +160,10 @@ export default function IntegrationPage() {
             orientation="vertical"
             value={selectedTab}
             onChange={handleTabChange}
+            variant="scrollable"
             sx={{
-              borderRight: 1,
+              borderRight: { xs: 0, md: 1 },
+              borderBottom: { xs: 1, md: 0 },
               borderColor: 'divider',
               '& .MuiTab-root': {
                 alignItems: 'flex-start',
@@ -247,8 +257,14 @@ export default function IntegrationPage() {
 
               {/* Embed Code Section */}
               <Box sx={{ mt: 4 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: { xs: 'column', md: 'row' },
+                  justifyContent: 'space-between', 
+                  alignItems: { xs: 'flex-start', md: 'center' }, 
+                  mb: 2 
+                }}>
+                  <Typography variant="h6" sx={{ mb: { xs: 1, md: 0 } }}>
                     Embed code
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -256,8 +272,15 @@ export default function IntegrationPage() {
                   </Typography>
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 2, 
+                  mb: 2,
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  width: { xs: '100%', sm: 'auto' }
+                }}>
                   <Button
+                    fullWidth={true}
                     variant={showCode ? "contained" : "outlined"}
                     onClick={() => setShowCode(true)}
                     sx={{
@@ -274,6 +297,7 @@ export default function IntegrationPage() {
                     Code
                   </Button>
                   <Button
+                    fullWidth={true}
                     variant={!showCode ? "contained" : "outlined"}
                     onClick={() => setShowCode(false)}
                     sx={{
@@ -296,19 +320,29 @@ export default function IntegrationPage() {
                     position: 'relative',
                     bgcolor: '#f8f9fa',
                     borderRadius: 1,
-                    p: 2,
+                    p: { xs: 1.5, sm: 2 },
                     fontFamily: 'monospace',
-                    fontSize: '0.875rem',
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
                     lineHeight: '1.5',
+                    overflow: 'auto'
                   }}
                 >
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'flex-end', 
+                    mb: 1,
+                    position: 'sticky',
+                    top: 0,
+                    bgcolor: '#f8f9fa',
+                    py: 1
+                  }}>
                     <Button
                       startIcon={<ContentCopyIcon />}
                       onClick={handleCopyCode}
                       sx={{
                         color: 'text.secondary',
                         textTransform: 'none',
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
                         '&:hover': {
                           bgcolor: 'transparent',
                           color: 'text.primary',
@@ -325,6 +359,7 @@ export default function IntegrationPage() {
                       mr: 2,
                       textAlign: 'right',
                       userSelect: 'none',
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
                     }
                   }}>
                     <Box className="line-numbers">
@@ -333,7 +368,12 @@ export default function IntegrationPage() {
                       3<br />
                       4
                     </Box>
-                    <Box sx={{ flex: 1, color: 'text.primary' }}>
+                    <Box sx={{ 
+                      flex: 1, 
+                      color: 'text.primary',
+                      wordBreak: 'break-all',
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    }}>
                       {'<iframe'}<br />
                       {'  src="https://app.finiiteai.com/embed/agent/v1/jogpwrjgw"'}<br />
                       {'  style="border: none; height: 500px; width: 600px"'}<br />
@@ -367,7 +407,7 @@ export default function IntegrationPage() {
                       borderColor: '#E5E7EB',
                     },
                     borderRadius: '8px',
-                    fontSize: '1rem',
+                    fontSize: { xs: '0.875rem', md: '1rem' },
                   }
                 }}
               />
