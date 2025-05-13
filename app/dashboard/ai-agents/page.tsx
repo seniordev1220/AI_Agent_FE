@@ -67,102 +67,27 @@ export default function AIAgentsPage() {
     router.push(`/dashboard/chat/${agentId}`)
   }
 
-  if (selectedAgent && messages.length > 0) {
-    // Show chat interface when there are messages
-    return (
-      <div className="max-w-10xl mx-auto p-4 md:p-6 space-y-6 mb-32">
-        {/* Chat Messages */}
-        <div className="space-y-6">
-          {messages.map((message) => (
-            <div key={message.id} className="flex items-start gap-4">
-              <Image
-                src={selectedAgent.avatar}
-                alt={selectedAgent.name}
-                width={40}
-                height={40}
-                className="rounded-full"
-              />
-              <div className="bg-gray-100 rounded-lg p-4 max-w-[80%]">
-                {message.content.split('\n').map((line, index) => (
-                  <p key={index}>{line}</p>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <MessageInput />
-      </div>
-    )
-  }
-
-  if (selectedAgent) {
-    // Show agent profile when first clicked
-    return (
-      <div className="max-w-6xl mx-auto p-4 md:p-6">
-        <div className="flex items-center justify-between mb-8">
-          <ModelSelector />
-        </div>
-
-        <div className="flex flex-col items-center text-center space-y-4">
-          <Image
-            src={selectedAgent.avatar}
-            alt={selectedAgent.name}
-            width={120}
-            height={120}
-            className="rounded-full"
-          />
-          <h1 className="text-2xl font-semibold">{selectedAgent.name}</h1>
-          <p className="text-gray-600 max-w-md">{selectedAgent.description}</p>
-          
-          <div className="mt-8">
-            <p className="text-gray-600">{selectedAgent.greeting}</p>
-          </div>
-        </div>
-
-        <MessageInput onSend={(message) => {
-          setMessages([
-            ...messages,
-            {
-              id: Date.now().toString(),
-              content: message,
-              role: 'user',
-              timestamp: new Date()
-            }
-          ])
-        }} />
-      </div>
-    )
-  }
-
-  // Show agents list
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6 h-full">
+      <div className="flex items-center justify-between mb-8">
         <ModelSelector />
       </div>
-
-      {/* Main Content */}
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold">Your AI workforce</h1>
         <p className="text-gray-500">Choose your assistant to begin.</p>
       </div>
-
-      {/* Agents Grid */}
-      <div>
+      <div className="flex flex-col h-[68vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Your AI Agents</h2>
           <Button variant="link" className="text-gray-600">
             View all ({agents.length})
           </Button>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {agents.length > 0 ? (
             agents.map((agent) => (
-              <div 
-                key={agent.id} 
+              <div
+                key={agent.id}
                 className="flex gap-4 items-start cursor-pointer hover:bg-gray-50 p-4 rounded-lg transition-colors"
                 onClick={() => handleAgentClick(agent.id)}
               >
@@ -185,14 +110,24 @@ export default function AIAgentsPage() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Message Input at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white p-4">
-        <div className="max-w-6xl mx-auto">
-          <MessageInput />
+        <div className="bg-white mt-auto p-4 z-10">
+          <div className="mx-auto">
+            <MessageInput
+              onSend={(message) => {
+                setMessages([
+                  ...messages,
+                  {
+                    id: Date.now().toString(),
+                    content: message,
+                    role: 'user',
+                    timestamp: new Date(),
+                  },
+                ])
+              }}
+            />
+          </div>
         </div>
       </div>
     </div>
   )
-} 
+}
