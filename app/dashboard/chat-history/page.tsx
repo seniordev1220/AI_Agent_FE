@@ -27,6 +27,27 @@ export default function ChatHistoryPage() {
     },
     // Add more chat history items as needed
   ])
+  
+  // Add new state for selected items
+  const [selectedChats, setSelectedChats] = useState<string[]>([])
+
+  // Handle select all checkbox
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedChats(chatLogs.map(chat => chat.id))
+    } else {
+      setSelectedChats([])
+    }
+  }
+
+  // Handle individual checkbox selection
+  const handleSelect = (id: string) => {
+    setSelectedChats(prev => 
+      prev.includes(id) 
+        ? prev.filter(chatId => chatId !== id)
+        : [...prev, id]
+    )
+  }
 
   return (
     <div className="max-w-8xl mx-auto p-4 md:p-6">
@@ -50,7 +71,12 @@ export default function ChatHistoryPage() {
         <div className="space-y-2">
           <div className="flex items-center justify-between py-2 px-4 font-medium">
             <div className="flex items-center gap-4">
-              <input type="checkbox" className="rounded" />
+              <input 
+                type="checkbox" 
+                className="rounded"
+                checked={selectedChats.length === chatLogs.length}
+                onChange={handleSelectAll}
+              />
               <span>Name</span>
             </div>
             <div className="flex items-center gap-2">
@@ -67,7 +93,12 @@ export default function ChatHistoryPage() {
               className="flex items-center justify-between py-2 px-4 hover:bg-white rounded-lg cursor-pointer"
             >
               <div className="flex items-center gap-4">
-                <input type="checkbox" className="rounded" />
+                <input 
+                  type="checkbox" 
+                  className="rounded"
+                  checked={selectedChats.includes(chat.id)}
+                  onChange={() => handleSelect(chat.id)}
+                />
                 <span>{chat.name}</span>
               </div>
               <span className="text-gray-500">{chat.timestamp}</span>
