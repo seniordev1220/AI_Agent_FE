@@ -5,20 +5,59 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ChangePasswordModal } from "./change-password-modal"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 export function ProfileSettings() {
   const { data: session } = useSession()
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     email: session?.user?.email || '',
     first_name: session?.user?.name?.split(' ')[0] || '',
-    last_name: session?.user?.name?.split(' ').slice(1).join(' ') || '',
+    last_name: session?.user?.name?.split(' ')[1] || '',
   })
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Add your save logic here
-    console.log('Saving profile data:', formData)
+    setIsLoading(true)
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.accessToken}`,
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to update profile')
+      }
+
+      toast.success('Your profile has been updated successfully! The changes will be reflected after your next login.')
+      router.refresh()
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      if (error instanceof Error && error.message.includes('Email already registered')) {
+        toast.error('This email address is already in use. Please try a different one.')
+      } else {
+        toast.error(error instanceof Error 
+          ? error.message 
+          : 'There was a problem updating your profile. Please try again later.'
+        )
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -85,8 +124,9 @@ export function ProfileSettings() {
             <Button
               type="submit"
               className="w-full md:w-auto bg-blue-500 hover:bg-blue-600 text-white"
+              disabled={isLoading}
             >
-              Save
+              {isLoading ? 'Saving...' : 'Save'}
             </Button>
           </div>
         </div>

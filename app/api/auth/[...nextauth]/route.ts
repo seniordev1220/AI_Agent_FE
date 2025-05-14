@@ -2,7 +2,7 @@ import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 
-const handler = NextAuth({
+export const authOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -16,7 +16,8 @@ const handler = NextAuth({
             return null
           }
 
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+          // First, authenticate the user
+          const loginResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
@@ -25,19 +26,33 @@ const handler = NextAuth({
             }),
           })
 
-          const data = await response.json()
+          const loginData = await loginResponse.json()
 
-          if (response.ok && data.access_token) {
-            // Return user object that will be saved in the JWT
+          if (loginResponse.ok && loginData.access_token) {
+            // Then, fetch user details using the access token
+            const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+              headers: {
+                'Authorization': `Bearer ${loginData.access_token}`,
+                'Content-Type': 'application/json',
+              },
+            })
+
+            const userData = await userResponse.json()
+
+            // Return user object with complete name information
             return {
               id: credentials.email,
               email: credentials.email,
-              accessToken: data.access_token,
+              accessToken: loginData.access_token,
+              name: userData.first_name,
+              firstName: userData.first_name,
+              lastName: userData.last_name,
             }
           }
 
           return null
         } catch (error) {
+          console.error('Auth error:', error)
           return null
         }
       }
@@ -51,25 +66,32 @@ const handler = NextAuth({
     signIn: '/sign-in',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: any, user: any }) {
       if (user && 'accessToken' in user) {
         token.accessToken = user.accessToken
       }
+      if (user) {
+        token.name = user.name
+        token.firstName = user.firstName
+        token.lastName = user.lastName
+      }
       return token
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: any, token: any }) {
       if (token) {
         session.user = {
-          name: session.user?.name,
+          name: `${token.name} ${token.lastName || ''}`.trim(),
           email: session.user?.email,
           image: session.user?.image,
-          // @ts-expect-error - accessToken is needed but not in type
-          accessToken: token.accessToken
+          accessToken: token.accessToken,
+          firstName: token.firstName,
+          lastName: token.lastName
         }
       }
       return session
     },
   },
-})
+}
 
+const handler = NextAuth(authOptions)
 export { handler as GET, handler as POST }

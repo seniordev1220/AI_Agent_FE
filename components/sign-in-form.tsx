@@ -35,13 +35,15 @@ export function SignInForm() {
         email: formData.email,
         password: formData.password,
         redirect: false,
+        name: formData.email.split('@')[0],
       })
 
       if (!result?.ok) {
         throw new Error(result?.error || "Failed to sign in")
       }
 
-      // Redirect to dashboard on success
+      await router.refresh()
+      
       router.push("/dashboard")
       toast.success("Successfully signed in!")
     } catch (error) {
