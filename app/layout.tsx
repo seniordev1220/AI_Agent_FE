@@ -4,6 +4,7 @@ import { Public_Sans } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
+import { Toaster } from "sonner"
 
 const publicSans = Public_Sans({ 
   subsets: ["latin"],
@@ -29,6 +30,7 @@ export default function RootLayout({
             {children}
           </ThemeProvider>
         </AuthProvider>
+        <Toaster richColors position="top-center" />
       </body>
     </html>
   )
