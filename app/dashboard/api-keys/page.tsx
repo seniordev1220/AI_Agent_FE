@@ -4,6 +4,7 @@ import { Box, Typography, Button, Paper, Stack, Dialog, DialogTitle, DialogConte
 import Image from 'next/image'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import { styled } from '@mui/material/styles'
+import { toast } from "sonner"
 
 const KeyContainer = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -114,6 +115,7 @@ export default function ApiKeysPage() {
         ))
         setIsDialogOpen(false)
         setErrorMessage('')
+        toast.success(`${currentProvider} API key set successfully!`)
       } else {
         const provider = apiKeys.find(k => k.provider === currentProvider)
         if (provider) {
@@ -130,7 +132,9 @@ export default function ApiKeysPage() {
     if (apiKey.prefix && !key.startsWith(apiKey.prefix)) {
       return false
     }
-    return key.length === apiKey.keyLength
+    const minLength = apiKey.keyLength - 5
+    const maxLength = apiKey.keyLength + 5
+    return key.length >= minLength && key.length <= maxLength
   }
 
   const maskApiKey = (key: string, apiKey: ApiKey): string => {
