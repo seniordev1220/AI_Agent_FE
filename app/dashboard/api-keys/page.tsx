@@ -89,13 +89,6 @@ export default function ApiKeysPage() {
       prefix: '',
       keyLength: 37
     },
-    { 
-      provider: 'Perplexity', 
-      key: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-      logo: '/model_logo/perplexity-logo.svg',
-      prefix: '',
-      keyLength: 32
-    },
   ])
 
   const handleUpdateKey = (provider: string) => {

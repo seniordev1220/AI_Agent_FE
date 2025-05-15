@@ -62,17 +62,36 @@ export default function UserManagement() {
 
       {/* Main Content */}
       <Box sx={{ flexGrow: 1, p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3,
+          position: 'relative'  // Add this to help with positioning
+        }}>
           <div>
             <Typography variant="h5" sx={{ fontWeight: 500 }}>User management</Typography>
             <Typography variant="body2" color="text.secondary">
               Invite team members to begin collaborating.
             </Typography>
           </div>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="contained"
+              sx={{ 
+                bgcolor: '#3366FF',  // Blue color matching your design
+                '&:hover': {
+                  bgcolor: '#2952CC'
+                }
+              }}
+            >
+              Save
+            </Button>
+          </Box>
         </Box>
 
         {selectedView === 'authentication' && (
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <div style={{ padding: 3, marginBottom: 3 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>Authentication settings</Typography>
             
             <Box sx={{ mb: 3 }}>
@@ -94,11 +113,11 @@ export default function UserManagement() {
                 Allows user to sign in with existing organization email.
               </Typography>
             </Box>
-          </Paper>
+          </div>
         )}
 
         {selectedView === 'users' && (
-          <Paper sx={{ p: 3 }}>
+          <div style={{ padding: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Box>
                 <Typography variant="h6">Current users</Typography>
@@ -107,18 +126,34 @@ export default function UserManagement() {
               <Box>
                 <Button 
                   variant="outlined" 
-                  sx={{ mr: 2 }}
+                  sx={{ 
+                    mr: 2,
+                    color: 'black',
+                    borderColor: 'black',
+                    '&:hover': {
+                      borderColor: 'black',
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                    }
+                  }}
                   startIcon={<AddIcon />}
                 >
                   Invite users
                 </Button>
-                <Button variant="contained" color="primary">
-                  Buy seats
+                <Button 
+                  variant="contained" 
+                  sx={{ 
+                    bgcolor: 'black',
+                    '&:hover': {
+                      bgcolor: 'rgba(0, 0, 0, 0.8)'
+                    }
+                  }}
+                >
+                  buy seats
                 </Button>
               </Box>
             </Box>
 
-            <TableContainer>
+            <TableContainer component={Paper} sx={{ border: '1px solid', borderColor: 'grey.200' }}>
               <Table>
                 <TableHead>
                   <TableRow>
@@ -151,7 +186,7 @@ export default function UserManagement() {
                 </TableBody>
               </Table>
             </TableContainer>
-          </Paper>
+          </div>
         )}
       </Box>
     </Box>

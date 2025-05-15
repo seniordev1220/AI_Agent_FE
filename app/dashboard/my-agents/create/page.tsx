@@ -2,12 +2,12 @@
 import { Box, Typography, Button, TextField, Switch, Select, MenuItem, FormControl, InputLabel, Chip } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import FolderIcon from '@mui/icons-material/Folder'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import CheckIcon from '@mui/icons-material/Check'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 const StyledSection = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(4),
@@ -93,6 +93,12 @@ const knowledgeBaseData: KnowledgeBaseItem[] = [
 ]
 
 export default function CreateAgentPage() {
+  // Get the agent ID from the URL query params if we're editing
+  const searchParams = useSearchParams()
+  const agentId = searchParams.get('id')
+  const isEditing = !!agentId
+
+  // Initialize state with existing agent data if editing
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
@@ -102,7 +108,27 @@ export default function CreateAgentPage() {
   const [profileImage, setProfileImage] = useState<File | null>(null)
   const [referenceEnabled, setReferenceEnabled] = useState(false)
   const [category, setCategory] = useState<string>('')
+  const [avatarUrl, setAvatarUrl] = useState<string>('')
   const router = useRouter()
+
+  // Load existing agent data on component mount if editing
+  useEffect(() => {
+    if (isEditing) {
+      const agents = JSON.parse(localStorage.getItem('myAgents') || '[]')
+      const agent = agents.find((a: any) => a.id === agentId)
+      
+      if (agent) {
+        setName(agent.name)
+        setDescription(agent.description)
+        setIsPrivate(agent.isPrivate)
+        setBaseModel(agent.baseModel)
+        setWelcomeMessage(agent.welcomeMessage)
+        setInstructions(agent.instructions)
+        setCategory(agent.category)
+        setAvatarUrl(agent.avatar)
+      }
+    }
+  }, [isEditing, agentId])
 
   const models = [
     { value: 'claude-3.5', label: 'Anthropic Claude-3.5' },
@@ -155,18 +181,25 @@ export default function CreateAgentPage() {
       instructions,
       baseModel,
       category,
-      // Use the stored base64 string as avatar
-      avatar: localStorage.getItem('tempAgentImage') || "/default-avatar.png",
-      id: Date.now().toString(),
+      avatar: localStorage.getItem('tempAgentImage') || avatarUrl || "/default-avatar.png",
+      id: isEditing ? agentId : Date.now().toString(),
     }
 
     // Get existing agents
     const existing = JSON.parse(localStorage.getItem("myAgents") || "[]")
-    // Save new list
-    localStorage.setItem("myAgents", JSON.stringify([...existing, agent]))
-    // Clean up the temporary image storage
+    
+    if (isEditing) {
+      // Update existing agent
+      const updatedAgents = existing.map((a: any) => 
+        a.id === agentId ? agent : a
+      )
+      localStorage.setItem("myAgents", JSON.stringify(updatedAgents))
+    } else {
+      // Add new agent
+      localStorage.setItem("myAgents", JSON.stringify([...existing, agent]))
+    }
+
     localStorage.removeItem('tempAgentImage')
-    // Redirect to /my-agents
     router.push("/dashboard/my-agents")
   }
 
@@ -175,7 +208,7 @@ export default function CreateAgentPage() {
       p: 4, 
       maxWidth: '1200px', 
       margin: '0 auto',
-      bgcolor: '#F6F9FC',
+      // bgcolor: '#F6F9FC',
       minHeight: '100vh'
     }}>
       {/* Header */}
@@ -187,7 +220,7 @@ export default function CreateAgentPage() {
       }}>
         <Box>
           <Typography variant="h4" sx={{ mb: 1 }}>
-            Agent Settings
+            {isEditing ? 'Edit Agent' : 'Agent Settings'}
           </Typography>
           <Typography variant="body1" color="text.secondary">
             Agent Name
@@ -238,7 +271,7 @@ export default function CreateAgentPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             fullWidth
-            sx={{ maxWidth: 600 }}
+            sx={{ maxWidth: 800 }}
           />
           
           <TextField
@@ -248,7 +281,7 @@ export default function CreateAgentPage() {
             multiline
             rows={4}
             fullWidth
-            sx={{ maxWidth: 600 }}
+            sx={{ maxWidth: 800 }}
             helperText="Helps team members understand what the agent is for."
           />
           
@@ -256,7 +289,7 @@ export default function CreateAgentPage() {
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between',
-            maxWidth: 600,
+            maxWidth: 800,
             mt: 2 
           }}>
             <Box>
@@ -286,7 +319,7 @@ export default function CreateAgentPage() {
           value={welcomeMessage}
           onChange={(e) => setWelcomeMessage(e.target.value)}
           fullWidth
-          sx={{ maxWidth: 600 }}
+          sx={{ maxWidth: 800 }}
           placeholder="Set a welcome message for your agent."
         />
       </StyledSection>
@@ -318,6 +351,18 @@ export default function CreateAgentPage() {
                   objectFit: 'cover'
                 }}
               />
+            ) : avatarUrl ? (
+              <Box
+                component="img"
+                src={avatarUrl}
+                alt="Profile preview"
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  objectFit: 'cover'
+                }}
+              />
             ) : (
               <>
                 <AddIcon sx={{ mb: 1 }} />
@@ -336,7 +381,7 @@ export default function CreateAgentPage() {
           Instructions
         </Typography>
         
-        <Box sx={{ maxWidth: 600 }}>
+        <Box sx={{ maxWidth: 800 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             These instructions will help the assistant perform based on specific tasks or instructions.
           </Typography>
@@ -360,7 +405,7 @@ You will help analyze information, and provide advice to boost company revenue."
           Model
         </Typography>
         
-        <FormControl sx={{ maxWidth: 600, width: '100%' }}>
+        <FormControl sx={{ maxWidth: 800, width: '100%' }}>
           <InputLabel>Base Model</InputLabel>
           <Select
             value={baseModel}
@@ -382,7 +427,7 @@ You will help analyze information, and provide advice to boost company revenue."
           Category
         </Typography>
         
-        <FormControl sx={{ maxWidth: 600, width: '100%' }}>
+        <FormControl sx={{ maxWidth: 800, width: '100%' }}>
           <InputLabel>Select Category</InputLabel>
           <Select
             value={category}

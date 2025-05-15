@@ -11,13 +11,17 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
-  Tabs,
-  Tab,
-  styled
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  styled,
+  Tab
 } from '@mui/material'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import { useSearchParams } from 'next/navigation'
 
 const StyledTab = styled(Tab)({
   textTransform: 'none',
@@ -28,6 +32,13 @@ const StyledTab = styled(Tab)({
   },
 })
 
+const StyledListItemButton = styled(ListItemButton)(({ theme }) => ({
+  '&.Mui-selected': {
+    backgroundColor: theme.palette.grey[100],
+    borderRadius: '8px',
+  },
+}))
+
 interface TabPanelProps {
   children?: React.ReactNode
   index: number
@@ -35,20 +46,39 @@ interface TabPanelProps {
 }
 
 export default function IntegrationPage() {
-  const [selectedTab, setSelectedTab] = useState(0)
+  const searchParams = useSearchParams()
+  const agentId = searchParams.get('agentId')
+  const [selectedTab, setSelectedTab] = useState('embed')
   const [selectedAgent, setSelectedAgent] = useState('Sales Agent')
   const [deploymentEnabled, setDeploymentEnabled] = useState(false)
   const [agentName, setAgentName] = useState('')
   const [greetingMessage, setGreetingMessage] = useState('')
   const [referenceType, setReferenceType] = useState('include')
   const [showCode, setShowCode] = useState(true)
+  const [myAgents, setMyAgents] = useState<any[]>([])
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  useEffect(() => {
+    // Load all agents from localStorage
+    const agents = JSON.parse(localStorage.getItem('myAgents') || '[]')
+    setMyAgents(agents)
+
+    // If agentId is provided, select that agent
+    if (agentId) {
+      const agent = agents.find((a: any) => a.id === agentId)
+      if (agent) {
+        setSelectedAgent(agent.name)
+        setAgentName(agent.name)
+        setGreetingMessage(agent.welcomeMessage || '')
+      }
+    }
+  }, [agentId])
+
+  const handleTabChange = (newValue: string) => {
     setSelectedTab(newValue)
   }
 
   const embedCode = `<iframe
-  src="https://app.finiiteai.com/embed/agent/v1/jogpwrjgw"
+  src="https://app.finiiteai.com/embed/agent/v1/${agentId || 'jogpwrjgw'}"
   style="border: none; height: 500px; width: 600px"
 />`
 
@@ -105,9 +135,11 @@ export default function IntegrationPage() {
                   value={selectedAgent}
                   onChange={(e) => setSelectedAgent(e.target.value)}
                 >
-                  <MenuItem value="Sales Agent">Sales Agent</MenuItem>
-                  <MenuItem value="Support Agent">Support Agent</MenuItem>
-                  <MenuItem value="Marketing Agent">Marketing Agent</MenuItem>
+                  {myAgents.map((agent) => (
+                    <MenuItem key={agent.id} value={agent.name}>
+                      {agent.name}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Box>
@@ -123,67 +155,91 @@ export default function IntegrationPage() {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Fixed Header */}
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', md: 'row' },
-        justifyContent: 'space-between', 
-        alignItems: { xs: 'flex-start', md: 'center' },
-        mb: 4 
-      }}>
-        <Box>
-          <Typography variant="h4" sx={{ mb: 1, fontSize: { xs: '1.5rem', md: '2rem' } }}>
-            Integration & deployment
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Deploy agents to your website or workflows.
-          </Typography>
-        </Box>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      {/* Sidebar Navigation */}
+      <Box sx={{ width: 250, borderRight: '1px solid', borderColor: 'grey.200', p: 2 }}>
+        <Typography className='text-base' sx={{ p: 2, color: 'grey.500' }}>
+          Integration
+        </Typography>
+        <List>
+          <ListItem disablePadding>
+            <StyledListItemButton
+              selected={selectedTab === 'embed'}
+              onClick={() => handleTabChange('embed')}
+              sx={{ my: 0.5 }}
+            >
+              <ListItemText primary="Embed via code" />
+            </StyledListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <StyledListItemButton
+              selected={selectedTab === 'api'}
+              onClick={() => handleTabChange('api')}
+              sx={{ my: 0.5 }}
+            >
+              <ListItemText primary="Connect with API" />
+            </StyledListItemButton>
+          </ListItem>
+        </List>
       </Box>
 
       {/* Main Content */}
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', md: 'row' },
-        gap: 4 
-      }}>
-        {/* Left Sidebar */}
+      <Box sx={{ flexGrow: 1, p: 3 }}>
+        {/* Header */}
         <Box sx={{ 
-          width: { xs: '100%', md: 200 },
-          mb: { xs: 3, md: 0 }
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3 
         }}>
-          <Typography variant="h6" sx={{ mb: 2, color: 'text.secondary' }}>
-            Integration
-          </Typography>
-          <Tabs
-            orientation="vertical"
-            value={selectedTab}
-            onChange={handleTabChange}
-            variant="scrollable"
-            sx={{
-              borderRight: { xs: 0, md: 1 },
-              borderBottom: { xs: 1, md: 0 },
-              borderColor: 'divider',
-              '& .MuiTab-root': {
-                alignItems: 'flex-start',
-                pl: 0,
-              },
-            }}
-          >
-            <StyledTab label="Embed via code" />
-            <StyledTab label="Connect with API" />
-          </Tabs>
+          <div>
+            <Typography variant="h5" sx={{ fontWeight: 500 }}>
+              Integration & deployment
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Deploy agents to your website or workflows.
+            </Typography>
+          </div>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="contained"
+              sx={{ 
+                bgcolor: '#3366FF',
+                '&:hover': {
+                  bgcolor: '#2952CC'
+                }
+              }}
+            >
+              Save
+            </Button>
+          </Box>
         </Box>
 
-        {/* Right Content */}
-        <Box sx={{ flex: 1 }}>
-          <TabPanel value={selectedTab} index={0}>
-            <Box sx={{ maxWidth: 800 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Configuration
-              </Typography>
+        {/* Agent Selection */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Select the agent you want to deploy
+          </Typography>
+          <FormControl fullWidth sx={{ maxWidth: 800 }}>
+            <Select
+              value={selectedAgent}
+              onChange={(e) => setSelectedAgent(e.target.value)}
+            >
+              {myAgents.map((agent) => (
+                <MenuItem key={agent.id} value={agent.name}>
+                  {agent.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
 
+        {/* Content based on selected tab */}
+        {selectedTab === 'embed' ? (
+          <Box>
+            {/* Configuration Section */}
+            <Box sx={{ maxWidth: 800 }}>
+              {/* Deployment Toggle */}
               <Box sx={{ 
                 display: 'flex', 
                 justifyContent: 'space-between', 
@@ -375,7 +431,7 @@ export default function IntegrationPage() {
                       fontSize: { xs: '0.75rem', sm: '0.875rem' }
                     }}>
                       {'<iframe'}<br />
-                      {'  src="https://app.finiiteai.com/embed/agent/v1/jogpwrjgw"'}<br />
+                      {'  src="https://app.finiiteai.com/embed/agent/v1/'}${agentId || 'jogpwrjgw'}"{'}'}<br />
                       {'  style="border: none; height: 500px; width: 600px"'}<br />
                       {'/>'}<br />
                     </Box>
@@ -383,37 +439,35 @@ export default function IntegrationPage() {
                 </Box>
               </Box>
             </Box>
-          </TabPanel>
-
-          <TabPanel value={selectedTab} index={1}>
-            <Box sx={{ maxWidth: 800 }}>
-              <Typography variant="h6" sx={{ mb: 3 }}>
-                API endpoint:
-              </Typography>
-              <TextField
-                fullWidth
-                value="api.finiiteai.com/njofpweewn"
-                InputProps={{
-                  readOnly: true,
-                  sx: {
-                    bgcolor: 'white',
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#E5E7EB',
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#E5E7EB',
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#E5E7EB',
-                    },
-                    borderRadius: '8px',
-                    fontSize: { xs: '0.875rem', md: '1rem' },
-                  }
-                }}
-              />
-            </Box>
-          </TabPanel>
-        </Box>
+          </Box>
+        ) : (
+          <Box sx={{ maxWidth: 800 }}>
+            <Typography variant="h6" sx={{ mb: 3 }}>
+              API endpoint:
+            </Typography>
+            <TextField
+              fullWidth
+              value="api.finiiteai.com/njofpweewn"
+              InputProps={{
+                readOnly: true,
+                sx: {
+                  bgcolor: 'white',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#E5E7EB',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#E5E7EB',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#E5E7EB',
+                  },
+                  borderRadius: '8px',
+                  fontSize: { xs: '0.875rem', md: '1rem' },
+                }
+              }}
+            />
+          </Box>
+        )}
       </Box>
     </Box>
   )
