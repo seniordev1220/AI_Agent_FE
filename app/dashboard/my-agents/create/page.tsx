@@ -203,6 +203,12 @@ export default function CreateAgentPage() {
     router.push("/dashboard/my-agents")
   }
 
+  const handleOpenChat = () => {
+    if (isEditing) {
+      router.push(`/dashboard/chat/${agentId}`)
+    }
+  }
+
   return (
     <Box sx={{ 
       p: 4, 
@@ -245,6 +251,8 @@ export default function CreateAgentPage() {
           <ActionButton
             variant="outlined"
             endIcon={<OpenInNewIcon />}
+            onClick={handleOpenChat}
+            disabled={!isEditing}
             sx={{
               border: '1px solid black',
               color: 'black',
