@@ -5,8 +5,9 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
 import { Toaster } from "sonner"
+import { Suspense } from "react"
 
-const publicSans = Public_Sans({ 
+const publicSans = Public_Sans({
   subsets: ["latin"],
   weight: ['300', '400', '500', '600', '700'],
   variable: '--font-public-sans'
@@ -25,12 +26,14 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${publicSans.variable} font-sans`}>
-        <AuthProvider>
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-            {children}
-          </ThemeProvider>
-        </AuthProvider>
-        <Toaster richColors position="top-center" />
+        <Suspense>
+          <AuthProvider>
+            <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+              {children}
+            </ThemeProvider>
+          </AuthProvider>
+          <Toaster richColors position="top-center" />
+        </Suspense>
       </body>
     </html>
   )
