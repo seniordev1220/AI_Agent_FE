@@ -63,7 +63,7 @@ export default function ChatHistoryPage() {
             <path d="M3 9v3h9V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </Button>
-      </div>
+      </div> 
 
       <div className="bg-[#F8F9FC] rounded-lg p-4">
         <h2 className="text-lg mb-4">All conversations</h2>
