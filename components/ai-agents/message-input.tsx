@@ -17,29 +17,6 @@ interface MessageInputProps {
   onSend?: (message: string) => void;
 }
 
-// Add this utility function at the top of the file
-async function imageUrlToBase64(url: string): Promise<string> {
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          resolve(reader.result);
-        } else {
-          reject(new Error('Failed to convert image to base64'));
-        }
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch (error) {
-    console.error('Error converting image to base64:', error);
-    throw error;
-  }
-}
-
 export function MessageInput({ onSend }: MessageInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -139,35 +116,27 @@ export function MessageInput({ onSend }: MessageInputProps) {
     }
   };
 
-  const insertGeneratedImage = async () => {
+  const insertGeneratedImage = () => {
     if (generatedImage && editor) {
-      try {
-        // Convert image to base64
-        const base64Image = await imageUrlToBase64(generatedImage);
-        
-        // Insert the image with specific styling
-        const imageHtml = `<img src="${base64Image}" alt="${imagePrompt}" style="max-width: 100%; border-radius: 8px; margin: 8px 0;" />`;
-        
-        // If there's existing content, add a line break before the image
-        const currentContent = editor.getHTML().trim();
-        const newContent = currentContent 
-          ? `${currentContent}<br/>${imageHtml}` 
-          : imageHtml;
-        
-        editor.commands.setContent(newContent);
-        
-        // Send the message immediately
-        onSend?.(newContent);
-        
-        // Clear the editor and reset states
-        editor.commands.setContent('');
-        setIsImageModalOpen(false);
-        setGeneratedImage(null);
-        setImagePrompt("");
-      } catch (error) {
-        console.error('Error handling image insertion:', error);
-        alert('Failed to process the image. Please try again.');
-      }
+      // Insert the image with specific styling
+      const imageHtml = `<img src="${generatedImage}" alt="${imagePrompt}" style="max-width: 100%; border-radius: 8px; margin: 8px 0;" />`;
+      
+      // If there's existing content, add a line break before the image
+      const currentContent = editor.getHTML().trim();
+      const newContent = currentContent 
+        ? `${currentContent}<br/>${imageHtml}` 
+        : imageHtml;
+      
+      editor.commands.setContent(newContent);
+      
+      // Send the message immediately
+      onSend?.(newContent);
+      
+      // Clear the editor and reset states
+      editor.commands.setContent('');
+      setIsImageModalOpen(false);
+      setGeneratedImage(null);
+      setImagePrompt("");
     }
   };
 
