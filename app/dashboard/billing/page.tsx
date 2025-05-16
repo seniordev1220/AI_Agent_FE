@@ -311,7 +311,7 @@ export default function BillingPage() {
 
             {plan.features.map((feature, index) => (
               <FeatureItem key={index} sx={{ mb: 1 }}>
-                <CheckIcon sx={{ color: 'primary.main' }} />
+                <CheckIcon sx={{ color: 'black' }} />
                 {renderFeatureText(feature)}
               </FeatureItem>
             ))}
