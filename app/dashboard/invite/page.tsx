@@ -75,24 +75,24 @@ export default function UserManagement() {
               Invite team members to begin collaborating.
             </Typography>
           </div>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button 
-              variant="contained"
-              sx={{ 
-                bgcolor: '#3366FF',  // Blue color matching your design
-                '&:hover': {
-                  bgcolor: '#2952CC'
-                }
-              }}
-            >
-              Save
-            </Button>
-          </Box>
         </Box>
 
         {selectedView === 'authentication' && (
           <div style={{ padding: 3, marginBottom: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>Authentication settings</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Authentication settings</Typography>
+              <Button 
+                variant="contained"
+                sx={{ 
+                  bgcolor: '#9FB5F1',
+                  '&:hover': {
+                    bgcolor: '#8CA4E8'
+                  }
+                }}
+              >
+                Save
+              </Button>
+            </Box>
             
             <Box sx={{ mb: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
