@@ -110,7 +110,7 @@ export default function BillingPage() {
         },
         {
           text: '1 AI Agent',
-          bold: ['1']
+          bold: ['1 AI Agent']
         },
         {
           text: 'Connect your knowledge base with 50 MB of files',
@@ -134,7 +134,7 @@ export default function BillingPage() {
         },
         {
           text: 'Create 10 AI agents and assistants',
-          bold: ['10']
+          bold: ['10 AI agents']
         },
         {
           text: 'Connect your knowledge base with 1 GB of files',
@@ -162,7 +162,7 @@ export default function BillingPage() {
         },
         {
           text: 'Create unlimited AI agents and assistants',
-          bold: ['unlimited']
+          bold: ['unlimited AI agents']
         },
         {
           text: 'Deploy& integrate agents into your workflows or websites',
