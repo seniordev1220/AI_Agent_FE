@@ -82,8 +82,6 @@ export default function ChatPage({
     const updatedHistory = [...chatHistory, newMessage];
     setChatHistory(updatedHistory);
     
-    localStorage.setItem(`chatHistory_${agentId}`, JSON.stringify(updatedHistory));
-
     try {
       const response = await fetch("/api/openai", {
         method: "POST",
@@ -147,7 +145,6 @@ export default function ChatPage({
           ref={chatContainerRef}
           className="flex-1 p-8 overflow-y-auto flex flex-col gap-6"
         >
-          {/* Always show agent information */}
           <div className="flex flex-col items-center justify-center mb-8">
             <img
               src={agent?.avatar || "/agents/code.svg"}
@@ -165,7 +162,6 @@ export default function ChatPage({
             </p>
           </div>
 
-          {/* Chat history */}
           {chatHistory.map((msg, index) =>
             msg.role === "user" ? (
               <div
@@ -219,3 +215,4 @@ export default function ChatPage({
     </div>
   );
 }
+
