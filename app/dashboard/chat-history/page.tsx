@@ -85,6 +85,39 @@ export default function ChatHistoryPage() {
     router.push(`/dashboard/chat/${id}`)
   }
 
+  const handleExport = () => {
+    if (selectedChats.length === 0) {
+      alert("Please select at least one chat to export")
+      return
+    }
+
+    // Create CSV content
+    const csvRows = ['Agent Name,Timestamp,Role,Message']
+    selectedChats.forEach(chatId => {
+      const chat = chatLogs.find(c => c.id === chatId)
+      if (chat && chat.messages) {
+        chat.messages.forEach(message => {
+          const agentName = agentNames[chatId] || `Chat ${chatId}`
+          // Escape commas and quotes in the content
+          const sanitizedContent = message.content.replace(/"/g, '""')
+          csvRows.push(`"${agentName}","${chat.timestamp}","${message.role}","${sanitizedContent}"`)
+        })
+      }
+    })
+
+    // Create and download the CSV file
+    const csvContent = csvRows.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', `chat_history_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="max-w-8xl mx-auto p-4 md:p-6">
       <div className="flex items-center justify-between mb-4">
@@ -92,7 +125,12 @@ export default function ChatHistoryPage() {
           <h1 className="text-2xl font-bold">Chat History</h1>
           <p className="text-gray-500">Access old chat logs</p>
         </div>
-        <Button variant="outline" className="gap-2">
+        <Button 
+          variant="outline" 
+          className="gap-2"
+          onClick={handleExport}
+          disabled={selectedChats.length === 0}
+        >
           <span>Export</span>
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M7.5 1.5v8M4.5 6.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
