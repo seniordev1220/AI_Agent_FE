@@ -40,6 +40,7 @@ export default function ChatPage({
       setAgent(currentAgent);
       
       const storedHistory = localStorage.getItem(`chatHistory_${agentId}`);
+      console.log('Loading chat history:', storedHistory);
       if (storedHistory) {
         setChatHistory(JSON.parse(storedHistory));
       }
@@ -48,9 +49,14 @@ export default function ChatPage({
 
   useEffect(() => {
     if (agentId && chatHistory.length > 0) {
+      console.log('Saving chat history:', chatHistory);
       localStorage.setItem(`chatHistory_${agentId}`, JSON.stringify(chatHistory));
     }
   }, [chatHistory, agentId]);
+
+  useEffect(() => {
+    console.log('Current chat history state:', chatHistory);
+  }, [chatHistory]);
 
   useEffect(() => {
     const scrollToBottom = () => {
