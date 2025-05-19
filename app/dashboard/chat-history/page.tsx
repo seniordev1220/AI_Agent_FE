@@ -147,39 +147,45 @@ export default function ChatHistoryPage() {
 
       <div className="bg-[#F8F9FC] rounded-lg p-4">
         <h2 className="text-lg mb-4">All conversations</h2>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between py-2 px-4 font-medium">
-            <div className="flex items-center gap-4">
-              <input 
-                type="checkbox" 
-                className="rounded"
-                checked={selectedChats.length === chatLogs.length}
-                onChange={handleSelectAll}
-              />
-              <span>Name</span>
-            </div>
-            <span>Date</span>
+        {chatLogs.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            No chat history available
           </div>
-
-          {chatLogs.map((chat) => (
-            <div 
-              key={chat.id}
-              className="flex items-center justify-between py-2 px-4 hover:bg-white rounded-lg cursor-pointer"
-              onClick={() => handleChatClick(chat.id)}
-            >
-              <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between py-2 px-4 font-medium">
+              <div className="flex items-center gap-4">
                 <input 
                   type="checkbox" 
                   className="rounded"
-                  checked={selectedChats.includes(chat.id)}
-                  onChange={() => handleSelect(chat.id)}
+                  checked={selectedChats.length === chatLogs.length}
+                  onChange={handleSelectAll}
                 />
-                <span>{agentNames[chat.id] || `Chat ${chat.id}`}</span>
+                <span>Name</span>
               </div>
-              <span className="text-gray-500">{chat.timestamp}</span>
+              <span>Date</span>
             </div>
-          ))}
-        </div>
+
+            {chatLogs.map((chat) => (
+              <div 
+                key={chat.id}
+                className="flex items-center justify-between py-2 px-4 hover:bg-white rounded-lg cursor-pointer"
+                onClick={() => handleChatClick(chat.id)}
+              >
+                <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
+                  <input 
+                    type="checkbox" 
+                    className="rounded"
+                    checked={selectedChats.includes(chat.id)}
+                    onChange={() => handleSelect(chat.id)}
+                  />
+                  <span>{agentNames[chat.id] || `Chat ${chat.id}`}</span>
+                </div>
+                <span className="text-gray-500">{chat.timestamp}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
