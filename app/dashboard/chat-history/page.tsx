@@ -24,18 +24,33 @@ interface ChatHistory {
 export default function ChatHistoryPage() {
   const [chatLogs, setChatLogs] = useState<ChatHistory[]>([])
   const [selectedChats, setSelectedChats] = useState<string[]>([])
+  const [agentNames, setAgentNames] = useState<Record<string, string>>({})
 
   useEffect(() => {
+    // Get agent names from localStorage
+    const myAgents = localStorage.getItem('myAgents')
+    if (myAgents) {
+      try {
+        const parsedAgents = JSON.parse(myAgents)
+        const nameMap: Record<string, string> = {}
+        parsedAgents.forEach((agent: { id: string; name: string }) => {
+          nameMap[agent.id] = agent.name
+        })
+        setAgentNames(nameMap)
+      } catch (error) {
+        console.error('Error parsing myAgents:', error)
+      }
+    }
+
     // Get chat history from localStorage
     const chatHistory = localStorage.getItem('chathistory')
     if (chatHistory) {
       try {
         const parsedHistory = JSON.parse(chatHistory)
-        // Transform the data into the format we need
         const formattedLogs = Object.entries(parsedHistory).map(([id, messages]) => ({
           id,
-          name: `Chat ${id}`, // You can customize this
-          timestamp: new Date().toLocaleString(), // Add proper timestamp if available
+          name: `Chat ${id}`,
+          timestamp: new Date().toLocaleString(),
           messages: messages as ChatMessage[]
         }))
         setChatLogs(formattedLogs)
@@ -90,12 +105,9 @@ export default function ChatHistoryPage() {
                 checked={selectedChats.length === chatLogs.length}
                 onChange={handleSelectAll}
               />
-              <span>Chat ID</span>
+              <span>Name</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span>Messages</span>
-              <span>Date</span>
-            </div>
+            <span>Date</span>
           </div>
 
           {chatLogs.map((chat) => (
@@ -110,12 +122,9 @@ export default function ChatHistoryPage() {
                   checked={selectedChats.includes(chat.id)}
                   onChange={() => handleSelect(chat.id)}
                 />
-                <span>{chat.id}</span>
+                <span>{agentNames[chat.id] || `Chat ${chat.id}`}</span>
               </div>
-              <div className="flex items-center gap-4">
-                <span className="text-gray-500">{chat.messages?.length || 0} messages</span>
-                <span className="text-gray-500">{chat.timestamp}</span>
-              </div>
+              <span className="text-gray-500">{chat.timestamp}</span>
             </div>
           ))}
         </div>
