@@ -67,7 +67,6 @@ export default function ChatHistoryPage() {
 
       <div className="bg-[#F8F9FC] rounded-lg p-4">
         <h2 className="text-lg mb-4">All conversations</h2>
-        
         <div className="space-y-2">
           <div className="flex items-center justify-between py-2 px-4 font-medium">
             <div className="flex items-center gap-4">
