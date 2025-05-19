@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 
 interface ChatMessage {
   role: string
@@ -22,6 +23,7 @@ interface ChatHistory {
 }
 
 export default function ChatHistoryPage() {
+  const router = useRouter()
   const [chatLogs, setChatLogs] = useState<ChatHistory[]>([])
   const [selectedChats, setSelectedChats] = useState<string[]>([])
   const [agentNames, setAgentNames] = useState<Record<string, string>>({})
@@ -78,6 +80,11 @@ export default function ChatHistoryPage() {
     )
   }
 
+  // Add click handler for chat items
+  const handleChatClick = (id: string) => {
+    router.push(`/dashboard/chat/${id}`)
+  }
+
   return (
     <div className="max-w-8xl mx-auto p-4 md:p-6">
       <div className="flex items-center justify-between mb-4">
@@ -114,8 +121,9 @@ export default function ChatHistoryPage() {
             <div 
               key={chat.id}
               className="flex items-center justify-between py-2 px-4 hover:bg-white rounded-lg cursor-pointer"
+              onClick={() => handleChatClick(chat.id)}
             >
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
                 <input 
                   type="checkbox" 
                   className="rounded"
