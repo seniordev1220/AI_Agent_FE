@@ -129,66 +129,63 @@ export default function ChatPage({
           ref={chatContainerRef}
           className="flex-1 p-8 overflow-y-auto flex flex-col gap-6"
         >
-          {chatHistory.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <img
-                src={agent?.avatar || "/agents/code.svg"}
-                alt={agent?.name || "AI Agent"}
-                className="w-24 h-24 rounded-full mb-4"
-              />
-              <h2 className="text-xl font-semibold mb-2">
-                {agent?.name || "AI Agent"}
-              </h2>
-              <p className="text-gray-600 text-center mb-2">
-                {agent?.description || "Loading agent description..."}
-              </p>
-              <p className="text-gray-500 text-center max-w-[600px]">
-                {agent?.welcomeMessage || "Hello! How can I help you today?"}
-              </p>
-            </div>
-          ) : (
-            chatHistory.map((msg, index) =>
-              msg.role === "user" ? (
+          {/* Always show agent information */}
+          <div className="flex flex-col items-center justify-center mb-8">
+            <img
+              src={agent?.avatar || "/agents/code.svg"}
+              alt={agent?.name || "AI Agent"}
+              className="w-24 h-24 rounded-full mb-4"
+            />
+            <h2 className="text-xl font-semibold mb-2">
+              {agent?.name || "AI Agent"}
+            </h2>
+            <p className="text-gray-600 text-center mb-2">
+              {agent?.description || "Loading agent description..."}
+            </p>
+            <p className="text-gray-500 text-center max-w-[600px]">
+              {agent?.welcomeMessage || "Hello! How can I help you today?"}
+            </p>
+          </div>
+
+          {/* Chat history */}
+          {chatHistory.map((msg, index) =>
+            msg.role === "user" ? (
+              <div
+                key={index}
+                className="self-end bg-gray-100 p-4 rounded-2xl max-w-[80%]"
+              >
                 <div
-                  key={index}
-                  className="self-end bg-gray-100 p-4 rounded-2xl max-w-[80%]"
-                >
-                  <div
-                    className="text-gray-800 prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
-                    dangerouslySetInnerHTML={{ __html: msg.content }}
-                  />
-                </div>
-              ) : (
-                <div key={index} className="flex gap-4 max-w-[80%]">
-                  <img
-                    src={agent?.avatar || "/agents/code.svg"}
-                    alt={agent?.name || "AI Agent"}
-                    className="w-12 h-12 rounded-full"
-                  />
-                  <div>
-                    <p className="font-medium mb-2">
-                      {agent?.name || "AI Agent"}
-                    </p>
-                    <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm">
-                      <div
-                        className="space-y-4 whitespace-pre-wrap prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
-                        dangerouslySetInnerHTML={{ __html: msg.content }}
-                      />
-                    </div>
-                    {/* Update Knowledge Button */}
-                    <div className="flex justify-end mt-2 ml-auto">
-                      <button
-                        className="px-4 py-2 bg-[#9FB5F1] text-white rounded-md hover:bg-[#8CA1E0] transition-colors text-sm"
-                        onClick={() => {
-                          console.log("Update knowledge base clicked");
-                        }}
-                      >
-                        Update knowledge base
-                      </button>
-                    </div>
+                  className="text-gray-800 prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
+                  dangerouslySetInnerHTML={{ __html: msg.content }}
+                />
+              </div>
+            ) : (
+              <div key={index} className="flex gap-4 max-w-[80%]">
+                <img
+                  src={agent?.avatar || "/agents/code.svg"}
+                  alt={agent?.name || "AI Agent"}
+                  className="w-12 h-12 rounded-full"
+                />
+                <div>
+                  <p className="font-medium mb-2">{agent?.name || "AI Agent"}</p>
+                  <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm">
+                    <div
+                      className="space-y-4 whitespace-pre-wrap prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
+                      dangerouslySetInnerHTML={{ __html: msg.content }}
+                    />
+                  </div>
+                  <div className="flex justify-end mt-2 ml-auto">
+                    <button
+                      className="px-4 py-2 bg-[#9FB5F1] text-white rounded-md hover:bg-[#8CA1E0] transition-colors text-sm"
+                      onClick={() => {
+                        console.log("Update knowledge base clicked");
+                      }}
+                    >
+                      Update knowledge base
+                    </button>
                   </div>
                 </div>
-              )
+              </div>
             )
           )}
         </div>
