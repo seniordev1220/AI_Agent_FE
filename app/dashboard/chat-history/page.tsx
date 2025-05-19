@@ -85,6 +85,11 @@ export default function ChatHistoryPage() {
     router.push(`/dashboard/chat/${id}`)
   }
 
+  const stripHtmlTags = (html: string) => {
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    return doc.body.textContent || ''
+  }
+
   const handleExport = () => {
     if (selectedChats.length === 0) {
       alert("Please select at least one chat to export")
@@ -98,8 +103,9 @@ export default function ChatHistoryPage() {
       if (chat && chat.messages) {
         chat.messages.forEach(message => {
           const agentName = agentNames[chatId] || `Chat ${chatId}`
-          // Escape commas and quotes in the content
-          const sanitizedContent = message.content.replace(/"/g, '""')
+          // Strip HTML tags and escape commas and quotes in the content
+          const plainContent = stripHtmlTags(message.content)
+          const sanitizedContent = plainContent.replace(/"/g, '""')
           csvRows.push(`"${agentName}","${chat.timestamp}","${message.role}","${sanitizedContent}"`)
         })
       }
