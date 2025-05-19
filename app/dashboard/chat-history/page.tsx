@@ -40,9 +40,12 @@ export default function ChatPage({
       setAgent(currentAgent);
       
       const storedHistory = localStorage.getItem(`chatHistory_${agentId}`);
-      console.log('Loading chat history:', storedHistory);
+      console.log(`Loading chat history for agent ${agentId}:`, storedHistory);
       if (storedHistory) {
         setChatHistory(JSON.parse(storedHistory));
+      } else {
+        setChatHistory([]);
+        localStorage.setItem(`chatHistory_${agentId}`, JSON.stringify([]));
       }
     }
   }, [agentId]);
@@ -75,7 +78,11 @@ export default function ChatPage({
 
   const handleSendMessage = async (message: string) => {
     const newMessage: ChatMessage = { role: "user", content: message };
-    setChatHistory((prev) => [...prev, newMessage]);
+    
+    const updatedHistory = [...chatHistory, newMessage];
+    setChatHistory(updatedHistory);
+    
+    localStorage.setItem(`chatHistory_${agentId}`, JSON.stringify(updatedHistory));
 
     try {
       const response = await fetch("/api/openai", {
@@ -109,7 +116,9 @@ export default function ChatPage({
         content: data.response,
       };
 
-      setChatHistory((prev) => [...prev, aiResponse]);
+      const finalHistory = [...updatedHistory, aiResponse];
+      setChatHistory(finalHistory);
+      localStorage.setItem(`chatHistory_${agentId}`, JSON.stringify(finalHistory));
     } catch (error) {
       console.error("Error getting chat completion:", error);
 
@@ -118,7 +127,10 @@ export default function ChatPage({
         content:
           "An error occurred while processing your request. Please try again later.",
       };
-      setChatHistory((prev) => [...prev, errorMessage]);
+      
+      const finalHistory = [...updatedHistory, errorMessage];
+      setChatHistory(finalHistory);
+      localStorage.setItem(`chatHistory_${agentId}`, JSON.stringify(finalHistory));
     }
   };
 
