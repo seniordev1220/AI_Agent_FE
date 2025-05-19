@@ -78,8 +78,8 @@ export default function IntegrationPage() {
   }
 
   const embedCode = `<iframe
-  src="https://app.finiiteai.com/embed/agent/v1/${agentId || 'jogpwrjgw'}"
-  style="border: none; height: 500px; width: 600px"
+  src="https://app.finiiteai.com/embed/agent/v1/${agentId || 'jogpwrjgw'}?theme=chat"
+  style="border: none; height: 600px; width: 400px"
 />`
 
   const handleCopyCode = () => {
@@ -431,8 +431,8 @@ export default function IntegrationPage() {
                       fontSize: { xs: '0.75rem', sm: '0.875rem' }
                     }}>
                       {'<iframe'}<br />
-                      {'  src="https://app.finiiteai.com/embed/agent/v1/'}${agentId || 'jogpwrjgw'}"{'}'}<br />
-                      {'  style="border: none; height: 500px; width: 600px"'}<br />
+                      {'  src="https://app.finiiteai.com/embed/agent/v1/'}${agentId || 'jogpwrjgw'}?theme=chat"{'}'}<br />
+                      {'  style="border: none; height: 600px; width: 400px"'}<br />
                       {'/>'}<br />
                     </Box>
                   </Box>
