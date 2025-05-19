@@ -48,22 +48,30 @@ export default function ChatPage({
     if (currentAgent) {
       setAgent(currentAgent);
 
-      const storedHistory = localStorage.getItem(`chatHistory_${agentId}`);
-      console.log(`Loading chat history for agent ${agentId}:`, storedHistory);
-      if (storedHistory) {
-        setChatHistory(JSON.parse(storedHistory));
-      } else {
-        setChatHistory([]);
-        localStorage.setItem(`chatHistory_${agentId}`, JSON.stringify([]));
-      }
+      // Get all chat histories from localStorage
+      const allChatHistories = JSON.parse(
+        localStorage.getItem("chathistory") || "{}"
+      );
+      
+      // Get specific agent's chat history or initialize empty array
+      const agentChatHistory = allChatHistories[agentId] || [];
+      setChatHistory(agentChatHistory);
     }
   }, [agentId]);
 
   // Save chat history to localStorage whenever it changes
   useEffect(() => {
     if (agentId && chatHistory.length > 0) {
-      console.log("Saving chat history:", chatHistory);
-      localStorage.setItem(`chatHistory_${agentId}`, JSON.stringify(chatHistory));
+      // Get current chat histories
+      const allChatHistories = JSON.parse(
+        localStorage.getItem("chathistory") || "{}"
+      );
+      
+      // Update the specific agent's chat history
+      allChatHistories[agentId] = chatHistory;
+      
+      // Save back to localStorage
+      localStorage.setItem("chathistory", JSON.stringify(allChatHistories));
     }
   }, [chatHistory, agentId]);
 
@@ -128,7 +136,13 @@ export default function ChatPage({
 
       const finalHistory = [...updatedHistory, aiResponse];
       setChatHistory(finalHistory);
-      localStorage.setItem(`chatHistory_${agentId}`, JSON.stringify(finalHistory));
+      
+      // Update localStorage with new chat history
+      const allChatHistories = JSON.parse(
+        localStorage.getItem("chathistory") || "{}"
+      );
+      allChatHistories[agentId!] = finalHistory;
+      localStorage.setItem("chathistory", JSON.stringify(allChatHistories));
     } catch (error) {
       console.error("Error getting chat completion:", error);
 
@@ -140,7 +154,13 @@ export default function ChatPage({
 
       const finalHistory = [...updatedHistory, errorMessage];
       setChatHistory(finalHistory);
-      localStorage.setItem(`chatHistory_${agentId}`, JSON.stringify(finalHistory));
+      
+      // Update localStorage with error message
+      const allChatHistories = JSON.parse(
+        localStorage.getItem("chathistory") || "{}"
+      );
+      allChatHistories[agentId!] = finalHistory;
+      localStorage.setItem("chathistory", JSON.stringify(allChatHistories));
     }
   };
 
