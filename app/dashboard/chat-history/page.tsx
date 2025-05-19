@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
@@ -7,63 +7,31 @@ interface ChatHistory {
   id: string
   name: string
   timestamp: string
-  agentId: string  // Added agentId to track which agent the chat belongs to
 }
 
 export default function ChatHistoryPage() {
   const router = useRouter()
-  const [chatLogs, setChatLogs] = useState<ChatHistory[]>([])
+  const [chatLogs, setChatLogs] = useState<ChatHistory[]>([
+    {
+      id: "1",
+      name: "Sales leads for hubspot",
+      timestamp: "9/24/2024, 11:37:30 AM"
+    },
+    {
+      id: "2",
+      name: "Recipe generator for lunch ideas",
+      timestamp: "9/24/2024, 11:37:29 AM"
+    },
+    {
+      id: "3",
+      name: "Competitor analysis report",
+      timestamp: "9/24/2024, 11:37:28 AM"
+    },
+    // Add more chat history items as needed
+  ])
+  
+  // Add new state for selected items
   const [selectedChats, setSelectedChats] = useState<string[]>([])
-
-  // Load chat history from localStorage on component mount
-  useEffect(() => {
-    const loadChatHistory = () => {
-      const storedHistory = localStorage.getItem('chathistory')
-      if (storedHistory) {
-        setChatLogs(JSON.parse(storedHistory))
-      } else {
-        // Initialize with sample data if nothing exists
-        const initialChats: ChatHistory[] = [
-          {
-            id: "1",
-            name: "Sales leads for hubspot",
-            timestamp: "9/24/2024, 11:37:30 AM",
-            agentId: "sales-agent"
-          },
-          {
-            id: "2",
-            name: "Recipe generator for lunch ideas",
-            timestamp: "9/24/2024, 11:37:29 AM",
-            agentId: "recipe-agent"
-          },
-          {
-            id: "3",
-            name: "Competitor analysis report",
-            timestamp: "9/24/2024, 11:37:28 AM",
-            agentId: "analysis-agent"
-          }
-        ]
-        localStorage.setItem('chathistory', JSON.stringify(initialChats))
-        setChatLogs(initialChats)
-      }
-    }
-
-    loadChatHistory()
-  }, [])
-
-  // Update localStorage whenever chatLogs changes
-  useEffect(() => {
-    localStorage.setItem('chathistory', JSON.stringify(chatLogs))
-  }, [chatLogs])
-
-  // Helper function to add new chat to history
-  const addChatToHistory = (newChat: ChatHistory) => {
-    setChatLogs(prevLogs => {
-      const updatedLogs = [newChat, ...prevLogs]
-      localStorage.setItem('chathistory', JSON.stringify(updatedLogs))
-      return updatedLogs
-    })
-  }
 
   // Handle select all checkbox
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
