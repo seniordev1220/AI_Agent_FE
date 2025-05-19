@@ -1,35 +1,49 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+
+interface ChatMessage {
+  role: string
+  content: string
+}
+
+interface ChatHistoryEntry {
+  role: string
+  content: string
+  timestamp?: string
+  agentId?: string
+}
 
 interface ChatHistory {
   id: string
   name: string
   timestamp: string
+  messages?: ChatMessage[]
 }
 
 export default function ChatHistoryPage() {
-  const [chatLogs, setChatLogs] = useState<ChatHistory[]>([
-    {
-      id: "1",
-      name: "Sales leads for hubspot",
-      timestamp: "9/24/2024, 11:37:30 AM"
-    },
-    {
-      id: "2",
-      name: "Recipe generator for lunch ideas",
-      timestamp: "9/24/2024, 11:37:29 AM"
-    },
-    {
-      id: "3",
-      name: "Competitor analysis report",
-      timestamp: "9/24/2024, 11:37:28 AM"
-    },
-    // Add more chat history items as needed
-  ])
-  
-  // Add new state for selected items
+  const [chatLogs, setChatLogs] = useState<ChatHistory[]>([])
   const [selectedChats, setSelectedChats] = useState<string[]>([])
+
+  useEffect(() => {
+    // Get chat history from localStorage
+    const chatHistory = localStorage.getItem('chathistory')
+    if (chatHistory) {
+      try {
+        const parsedHistory = JSON.parse(chatHistory)
+        // Transform the data into the format we need
+        const formattedLogs = Object.entries(parsedHistory).map(([id, messages]) => ({
+          id,
+          name: `Chat ${id}`, // You can customize this
+          timestamp: new Date().toLocaleString(), // Add proper timestamp if available
+          messages: messages as ChatMessage[]
+        }))
+        setChatLogs(formattedLogs)
+      } catch (error) {
+        console.error('Error parsing chat history:', error)
+      }
+    }
+  }, [])
 
   // Handle select all checkbox
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,13 +90,11 @@ export default function ChatHistoryPage() {
                 checked={selectedChats.length === chatLogs.length}
                 onChange={handleSelectAll}
               />
-              <span>Name</span>
+              <span>Chat ID</span>
             </div>
             <div className="flex items-center gap-2">
+              <span>Messages</span>
               <span>Date</span>
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7.5 3.5v8M4.5 8.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
             </div>
           </div>
 
@@ -98,9 +110,12 @@ export default function ChatHistoryPage() {
                   checked={selectedChats.includes(chat.id)}
                   onChange={() => handleSelect(chat.id)}
                 />
-                <span>{chat.name}</span>
+                <span>{chat.id}</span>
               </div>
-              <span className="text-gray-500">{chat.timestamp}</span>
+              <div className="flex items-center gap-4">
+                <span className="text-gray-500">{chat.messages?.length || 0} messages</span>
+                <span className="text-gray-500">{chat.timestamp}</span>
+              </div>
             </div>
           ))}
         </div>
