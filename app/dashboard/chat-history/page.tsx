@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
@@ -7,92 +7,31 @@ interface ChatHistory {
   id: string
   name: string
   timestamp: string
-  agentId: string  // Added agentId to track which agent the chat belongs to
 }
 
 export default function ChatHistoryPage() {
   const router = useRouter()
-  const [chatLogs, setChatLogs] = useState<ChatHistory[]>([])
+  const [chatLogs, setChatLogs] = useState<ChatHistory[]>([
+    {
+      id: "1",
+      name: "Sales leads for hubspot",
+      timestamp: "9/24/2024, 11:37:30 AM"
+    },
+    {
+      id: "2",
+      name: "Recipe generator for lunch ideas",
+      timestamp: "9/24/2024, 11:37:29 AM"
+    },
+    {
+      id: "3",
+      name: "Competitor analysis report",
+      timestamp: "9/24/2024, 11:37:28 AM"
+    },
+    // Add more chat history items as needed
+  ])
+  
+  // Add new state for selected items
   const [selectedChats, setSelectedChats] = useState<string[]>([])
-
-  // Load chat history from localStorage on component mount
-  useEffect(() => {
-    const loadChatHistory = () => {
-      const storedHistory = localStorage.getItem('chathistory')
-      if (storedHistory) {
-        // Parse the stored history which is now grouped by agentId
-        const historyByAgent = JSON.parse(storedHistory)
-        // Flatten all chat histories into a single array
-        const allChats = Object.values(historyByAgent).flat() as ChatHistory[]
-        // Sort by timestamp (newest first)
-        const sortedChats = allChats.sort((a, b) => 
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        )
-        setChatLogs(sortedChats)
-      } else {
-        // Initialize with sample data if nothing exists
-        const initialChats: ChatHistory[] = [
-          {
-            id: "1",
-            name: "Sales leads for hubspot",
-            timestamp: "9/24/2024, 11:37:30 AM",
-            agentId: "sales-agent"
-          },
-          {
-            id: "2",
-            name: "Recipe generator for lunch ideas",
-            timestamp: "9/24/2024, 11:37:29 AM",
-            agentId: "recipe-agent"
-          },
-          {
-            id: "3",
-            name: "Competitor analysis report",
-            timestamp: "9/24/2024, 11:37:28 AM",
-            agentId: "analysis-agent"
-          }
-        ]
-        // Group chats by agentId
-        const groupedChats = initialChats.reduce((acc, chat) => {
-          acc[chat.agentId] = acc[chat.agentId] || []
-          acc[chat.agentId].push(chat)
-          return acc
-        }, {} as Record<string, ChatHistory[]>)
-        
-        localStorage.setItem('chathistory', JSON.stringify(groupedChats))
-        setChatLogs(initialChats)
-      }
-    }
-
-    loadChatHistory()
-  }, [])
-
-  // Update localStorage whenever chatLogs changes
-  useEffect(() => {
-    // Group the current chatLogs by agentId before storing
-    const groupedChats = chatLogs.reduce((acc, chat) => {
-      acc[chat.agentId] = acc[chat.agentId] || []
-      acc[chat.agentId].push(chat)
-      return acc
-    }, {} as Record<string, ChatHistory[]>)
-    
-    localStorage.setItem('chathistory', JSON.stringify(groupedChats))
-  }, [chatLogs])
-
-  // Helper function to add new chat to history
-  const addChatToHistory = (newChat: ChatHistory) => {
-    setChatLogs(prevLogs => {
-      const updatedLogs = [newChat, ...prevLogs]
-      // Group chats by agentId before storing
-      const groupedChats = updatedLogs.reduce((acc, chat) => {
-        acc[chat.agentId] = acc[chat.agentId] || []
-        acc[chat.agentId].push(chat)
-        return acc
-      }, {} as Record<string, ChatHistory[]>)
-      
-      localStorage.setItem('chathistory', JSON.stringify(groupedChats))
-      return updatedLogs
-    })
-  }
 
   // Handle select all checkbox
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
