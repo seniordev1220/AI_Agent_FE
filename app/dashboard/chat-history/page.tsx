@@ -1,111 +1,206 @@
-"use client"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+"use client";
+import { useState, useRef, useEffect } from "react";
+import { ModelSelector } from "@/components/ai-agents/model-selector";
+import { MessageInput } from "@/components/ai-agents/message-input";
+import React from "react";
 
-interface ChatHistory {
-  id: string
-  name: string
-  timestamp: string
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
-export default function ChatHistoryPage() {
-  const [chatLogs, setChatLogs] = useState<ChatHistory[]>([
-    {
-      id: "1",
-      name: "Sales leads for hubspot",
-      timestamp: "9/24/2024, 11:37:30 AM"
-    },
-    {
-      id: "2",
-      name: "Recipe generator for lunch ideas",
-      timestamp: "9/24/2024, 11:37:29 AM"
-    },
-    {
-      id: "3",
-      name: "Competitor analysis report",
-      timestamp: "9/24/2024, 11:37:28 AM"
-    },
-    // Add more chat history items as needed
-  ])
-  
-  // Add new state for selected items
-  const [selectedChats, setSelectedChats] = useState<string[]>([])
+interface Agent {
+  id: string;
+  name: string;
+  avatar: string;
+  description: string;
+  instruction: string;
+  welcomeMessage: string;
+}
 
-  // Handle select all checkbox
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedChats(chatLogs.map(chat => chat.id))
-    } else {
-      setSelectedChats([])
+export default function ChatPage({
+  params,
+}: {
+  params: Promise<{ agentId: string }>;
+}) {
+  const { agentId } = React.use(params);
+
+  const [message, setMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [agent, setAgent] = useState<Agent | null>(null);
+
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const storedAgents = JSON.parse(
+      localStorage.getItem("myAgents") || "[]"
+    ) as Agent[];
+    const currentAgent = storedAgents.find((a) => a.id === agentId);
+    if (currentAgent) {
+      setAgent(currentAgent);
+      
+      const storedHistory = localStorage.getItem(`chatHistory_${agentId}`);
+      if (storedHistory) {
+        setChatHistory(JSON.parse(storedHistory));
+      }
     }
-  }
+  }, [agentId]);
 
-  // Handle individual checkbox selection
-  const handleSelect = (id: string) => {
-    setSelectedChats(prev => 
-      prev.includes(id) 
-        ? prev.filter(chatId => chatId !== id)
-        : [...prev, id]
-    )
-  }
+  useEffect(() => {
+    if (agentId && chatHistory.length > 0) {
+      localStorage.setItem(`chatHistory_${agentId}`, JSON.stringify(chatHistory));
+    }
+  }, [chatHistory, agentId]);
+
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop =
+          chatContainerRef.current.scrollHeight;
+      }
+    };
+
+    scrollToBottom();
+
+    const timeoutId = setTimeout(scrollToBottom, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [chatHistory]);
+
+  const handleSendMessage = async (message: string) => {
+    const newMessage: ChatMessage = { role: "user", content: message };
+    setChatHistory((prev) => [...prev, newMessage]);
+
+    try {
+      const response = await fetch("/api/openai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [
+            ...chatHistory.map((msg) => ({
+              role: msg.role,
+              content: msg.content,
+            })),
+            { role: "user", content: message },
+          ],
+          instruction: agent?.instruction,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          data.error?.message ||
+            data.error ||
+            "Failed to get a response from the server."
+        );
+      }
+
+      const aiResponse: ChatMessage = {
+        role: "assistant",
+        content: data.response,
+      };
+
+      setChatHistory((prev) => [...prev, aiResponse]);
+    } catch (error) {
+      console.error("Error getting chat completion:", error);
+
+      const errorMessage: ChatMessage = {
+        role: "assistant",
+        content:
+          "An error occurred while processing your request. Please try again later.",
+      };
+      setChatHistory((prev) => [...prev, errorMessage]);
+    }
+  };
 
   return (
-    <div className="max-w-8xl mx-auto p-4 md:p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-bold">Chat History</h1>
-          <p className="text-gray-500">Access old chat logs</p>
+    <div className="h-[87vh] flex overflow-hidden">
+      <div className="flex-1 flex flex-col bg-white overflow-hidden">
+        <div className="sticky top-0 z-10 bg-white pt-4 pb-2 px-4">
+          <div className="max-w-[200px]">
+            <ModelSelector />
+          </div>
         </div>
-        <Button variant="outline" className="gap-2">
-          <span>Export</span>
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M7.5 1.5v8M4.5 6.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M3 9v3h9V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </Button>
-      </div> 
 
-      <div className="bg-[#F8F9FC] rounded-lg p-4">
-        <h2 className="text-lg mb-4">All conversations</h2>
-        
-        <div className="space-y-2">
-          <div className="flex items-center justify-between py-2 px-4 font-medium">
-            <div className="flex items-center gap-4">
-              <input 
-                type="checkbox" 
-                className="rounded"
-                checked={selectedChats.length === chatLogs.length}
-                onChange={handleSelectAll}
+        <div
+          ref={chatContainerRef}
+          className="flex-1 p-8 overflow-y-auto flex flex-col gap-6"
+        >
+          {chatHistory.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <img
+                src={agent?.avatar || "/agents/code.svg"}
+                alt={agent?.name || "AI Agent"}
+                className="w-24 h-24 rounded-full mb-4"
               />
-              <span>Name</span>
+              <h2 className="text-xl font-semibold mb-2">
+                {agent?.name || "AI Agent"}
+              </h2>
+              <p className="text-gray-600 text-center mb-2">
+                {agent?.description || "Loading agent description..."}
+              </p>
+              <p className="text-gray-500 text-center max-w-[600px]">
+                {agent?.welcomeMessage || "Hello! How can I help you today?"}
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span>Date</span>
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7.5 3.5v8M4.5 8.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+          ) : (
+            chatHistory.map((msg, index) =>
+              msg.role === "user" ? (
+                <div
+                  key={index}
+                  className="self-end bg-gray-100 p-4 rounded-2xl max-w-[80%]"
+                >
+                  <div
+                    className="text-gray-800 prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
+                    dangerouslySetInnerHTML={{ __html: msg.content }}
+                  />
+                </div>
+              ) : (
+                <div key={index} className="flex gap-4 max-w-[80%]">
+                  <img
+                    src={agent?.avatar || "/agents/code.svg"}
+                    alt={agent?.name || "AI Agent"}
+                    className="w-12 h-12 rounded-full"
+                  />
+                  <div>
+                    <p className="font-medium mb-2">
+                      {agent?.name || "AI Agent"}
+                    </p>
+                    <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm">
+                      <div
+                        className="space-y-4 whitespace-pre-wrap prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
+                        dangerouslySetInnerHTML={{ __html: msg.content }}
+                      />
+                    </div>
+                    {/* Update Knowledge Button */}
+                    <div className="flex justify-end mt-2 ml-auto">
+                      <button
+                        className="px-4 py-2 bg-[#9FB5F1] text-white rounded-md hover:bg-[#8CA1E0] transition-colors text-sm"
+                        onClick={() => {
+                          console.log("Update knowledge base clicked");
+                        }}
+                      >
+                        Update knowledge base
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            )
+          )}
+        </div>
+
+        <div className="sticky bottom-0 z-10 w-full p-6 bg-gray-50">
+          <div className="flex gap-2 items-center">
+            <div className="flex-1">
+              <MessageInput onSend={handleSendMessage} />
             </div>
           </div>
-
-          {chatLogs.map((chat) => (
-            <div 
-              key={chat.id}
-              className="flex items-center justify-between py-2 px-4 hover:bg-white rounded-lg cursor-pointer"
-            >
-              <div className="flex items-center gap-4">
-                <input 
-                  type="checkbox" 
-                  className="rounded"
-                  checked={selectedChats.includes(chat.id)}
-                  onChange={() => handleSelect(chat.id)}
-                />
-                <span>{chat.name}</span>
-              </div>
-              <span className="text-gray-500">{chat.timestamp}</span>
-            </div>
-          ))}
         </div>
       </div>
     </div>
-  )
-} 
+  );
+}
