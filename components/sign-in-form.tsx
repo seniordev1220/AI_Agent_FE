@@ -13,11 +13,13 @@ import { Separator } from "@/components/ui/separator"
 import { Logo } from "@/components/ui/logo"
 import { toast } from "sonner"
 
+require('dotenv').config();
+
 export function SignInForm() {
-    console.log("GOOGLE_CLIENT_ID", process.env.GOOGLE_CLIENT_ID);
-console.log("GOOGLE_CLIENT_SECRET", process.env.GOOGLE_CLIENT_SECRET);
-console.log("NEXTAUTH_SECRET", process.env.NEXTAUTH_SECRET);
-console.log("NEXT_PUBLIC_API_URL", process.env.NEXT_PUBLIC_API_URL);
+    console.log("GOOGLE_CLIENT_ID", process.env.NEXT_PUBLICGOOGLE_CLIENT_ID);
+console.log("GOOGLE_CLIENT_SECRET", process.env.NEXT_PUBLICGOOGLE_CLIENT_SECRET);
+console.log("NEXTAUTH_SECRET", process.env.NEXT_PUBLICNEXTAUTH_SECRET);
+console.log("NEXT_PUBLIC_API_URL", process.env.NEXT_PUBLIC_NEXTAUTH_URL);
 console.log("OPENAI_API_KEY", process.env.OPENAI_API_KEY);
   const router = useRouter()
   const [formData, setFormData] = useState({
