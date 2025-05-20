@@ -7,7 +7,7 @@ require('dotenv').config();
 
 // Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '', // Use environment variable or fallback
+  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || '', // Use environment variable or fallback
 });
 
 // Define category-specific prompts
