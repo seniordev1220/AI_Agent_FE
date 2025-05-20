@@ -14,6 +14,11 @@ import { Logo } from "@/components/ui/logo"
 import { toast } from "sonner"
 
 export function SignInForm() {
+    console.log("GOOGLE_CLIENT_ID", process.env.GOOGLE_CLIENT_ID);
+console.log("GOOGLE_CLIENT_SECRET", process.env.GOOGLE_CLIENT_SECRET);
+console.log("NEXTAUTH_SECRET", process.env.NEXTAUTH_SECRET);
+console.log("NEXT_PUBLIC_API_URL", process.env.NEXT_PUBLIC_API_URL);
+console.log("OPENAI_API_KEY", process.env.OPENAI_API_KEY);
   const router = useRouter()
   const [formData, setFormData] = useState({
     email: "",
