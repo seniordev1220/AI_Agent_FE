@@ -2,6 +2,12 @@ import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 
+console.log("GOOGLE_CLIENT_ID", process.env.GOOGLE_CLIENT_ID);
+console.log("GOOGLE_CLIENT_SECRET", process.env.GOOGLE_CLIENT_SECRET);
+console.log("NEXTAUTH_SECRET", process.env.NEXTAUTH_SECRET);
+console.log("NEXT_PUBLIC_API_URL", process.env.NEXT_PUBLIC_API_URL);
+console.log("OPENAI_API_KEY", process.env.OPENAI_API_KEY);
+
 export const authOptions = {
   providers: [
     CredentialsProvider({
