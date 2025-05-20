@@ -2,12 +2,6 @@ import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 
-console.log("GOOGLE_CLIENT_ID", process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
-console.log("GOOGLE_CLIENT_SECRET", process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET);
-console.log("NEXTAUTH_SECRET", process.env.NEXT_PUBLIC_NEXTAUTH_SECRET);
-console.log("NEXT_PUBLIC_API_URL", process.env.NEXT_PUBLIC_NEXTAUTH_URL);
-console.log("OPENAI_API_KEY", process.env.NEXT_PUBLIC_OPENAI_API_KEY);
-
 export const authOptions = {
   providers: [
     CredentialsProvider({
@@ -23,7 +17,7 @@ export const authOptions = {
           }
 
           // First, authenticate the user
-          const loginResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+          const loginResponse = await fetch(`${process.env.NEXT_PUBLIC_NEXTAUTH_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
@@ -36,7 +30,7 @@ export const authOptions = {
 
           if (loginResponse.ok && loginData.access_token) {
             // Then, fetch user details using the access token
-            const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+            const userResponse = await fetch(`${process.env.NEXT_PUBLIC_NEXTAUTH_URL}/users/me`, {
               headers: {
                 'Authorization': `Bearer ${loginData.access_token}`,
                 'Content-Type': 'application/json',
@@ -64,8 +58,8 @@ export const authOptions = {
       }
     }),
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET!,
     }),
   ],
   pages: {
