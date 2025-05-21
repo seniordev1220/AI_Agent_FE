@@ -15,14 +15,18 @@ import { Label } from "@/components/ui/label";
 
 interface MessageInputProps {
   onSend?: (message: string) => void;
+  onFileUpload?: (file: File) => Promise<string>;
 }
 
-export function MessageInput({ onSend }: MessageInputProps) {
+export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imagePrompt, setImagePrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [isFileModalOpen, setIsFileModalOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Initialize TipTap editor
   const editor = useEditor({
@@ -140,6 +144,45 @@ export function MessageInput({ onSend }: MessageInputProps) {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setSelectedFile(file);
+    setIsUploading(true);
+    
+    try {
+      // Create FormData
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Upload file to /api/upload-file
+      const response = await fetch('/api/upload-file', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload file');
+      }
+
+      const data = await response.json();
+      
+      // Insert file link into editor
+      if (data.url && editor) {
+        const fileHtml = `<p>📎 <a href="${data.url}" target="_blank" rel="noopener noreferrer">${file.name}</a></p>`;
+        editor.commands.setContent(editor.getHTML() + fileHtml);
+      }
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setIsUploading(false);
+      setIsFileModalOpen(false);
+      setSelectedFile(null);
+    }
+  };
+
   return (
     <div className="w-full">
       <div>
@@ -184,6 +227,7 @@ export function MessageInput({ onSend }: MessageInputProps) {
                 <div className="w-px h-4 bg-gray-200 mx-1" /> {/* Separator */}
                 <button
                   type="button"
+                  onClick={() => setIsFileModalOpen(true)}
                   className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"
                 >
                   <Plus className="h-4 w-4" />
@@ -264,6 +308,31 @@ export function MessageInput({ onSend }: MessageInputProps) {
                   {isGenerating ? "Generating..." : "Generate"}
                 </Button>
               )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isFileModalOpen} onOpenChange={setIsFileModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Upload File</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Input
+              type="file"
+              onChange={handleFileUpload}
+              accept=".pdf,.doc,.docx,.txt"
+              disabled={isUploading}
+            />
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setIsFileModalOpen(false)}
+                disabled={isUploading}
+              >
+                Cancel
+              </Button>
             </div>
           </div>
         </DialogContent>

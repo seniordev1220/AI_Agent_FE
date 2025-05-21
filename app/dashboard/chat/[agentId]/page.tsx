@@ -18,13 +18,24 @@ interface Agent {
   welcomeMessage: string;
 }
 
+interface DataSource {
+  id: string;
+  title: string;
+  url?: string;
+  type: 'pdf' | 'webpage' | 'text';
+}
+
+interface ChatMessageWithSources extends ChatMessage {
+  sources?: DataSource[];
+}
+
 export default function ChatPage({
   params,
 }: {
   params: Promise<{ agentId: string }>;
 }) {
   const [message, setMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatMessageWithSources[]>([]);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null); // State to store resolved agentId
 
@@ -164,6 +175,38 @@ export default function ChatPage({
     }
   };
 
+  const handleUpdateKnowledgeBase = async (messageIndex: number) => {
+    const message = chatHistory[messageIndex];
+    if (!message || !agentId) return;
+
+    try {
+      const response = await fetch('/api/update-knowledge-base', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agentId,
+          content: message.content,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+
+      // Update the message with sources
+      const updatedHistory = [...chatHistory];
+      updatedHistory[messageIndex] = {
+        ...message,
+        sources: data.sources,
+      };
+      setChatHistory(updatedHistory);
+    } catch (error) {
+      console.error('Failed to update knowledge base:', error);
+      alert('Failed to update knowledge base. Please try again.');
+    }
+  };
+
   return (
     <div className="h-[87vh] flex overflow-hidden">
       <div className="flex-1 flex flex-col bg-white overflow-hidden">
@@ -219,13 +262,29 @@ export default function ChatPage({
                       className="space-y-4 whitespace-pre-wrap prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
                       dangerouslySetInnerHTML={{ __html: msg.content }}
                     />
+                    {msg.sources && msg.sources.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <p className="text-sm text-gray-500 mb-2">Sources:</p>
+                        <ul className="list-disc pl-4">
+                          {msg.sources.map((source, idx) => (
+                            <li key={idx} className="text-sm text-gray-600">
+                              {source.title}
+                              {source.url && (
+                                <a href={source.url} target="_blank" rel="noopener noreferrer" 
+                                   className="ml-2 text-blue-500 hover:underline">
+                                  (link)
+                                </a>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   <div className="flex justify-end mt-2 ml-auto">
                     <button
                       className="px-4 py-2 bg-[#9FB5F1] text-white rounded-md hover:bg-[#8CA1E0] transition-colors text-sm"
-                      onClick={() => {
-                        console.log("Update knowledge base clicked");
-                      }}
+                      onClick={() => handleUpdateKnowledgeBase(index)}
                     >
                       Update knowledge base
                     </button>

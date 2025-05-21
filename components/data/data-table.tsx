@@ -3,6 +3,7 @@ import { CheckCircle, XCircle, AlertCircle, RefreshCw, ChevronLeft, ChevronRight
 import Image from "next/image"
 import { useState, useEffect } from "react"
 import { format, formatDistanceToNow } from 'date-fns'
+import { useSession } from "next-auth/react"
 
 interface DataSource {
   id: string
@@ -75,7 +76,8 @@ export function DataTable() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [dataSources, setDataSources] = useState<DataSource[]>(initialDataSources);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 8;
+  const { data: session } = useSession()
 
   const loadDataSources = () => {
     const savedSources = localStorage.getItem('dataSources');
@@ -127,9 +129,17 @@ export function DataTable() {
   const currentItems = dataSources.slice(startIndex, endIndex);
 
   const handleStatusChange = (sourceId: string, newStatus: DataSource['status']) => {
+    const loginedUser = session?.user?.name || 'Unknown User';
     setDataSources(prev => 
       prev.map(source =>
-        source.id === sourceId ? { ...source, status: newStatus } : source
+        source.id === sourceId 
+          ? { 
+              ...source, 
+              status: newStatus,
+              owner: loginedUser,
+              lastSync: "Just now"
+            } 
+          : source
       )
     );
     setActiveDropdown(null);
@@ -187,7 +197,7 @@ export function DataTable() {
                 </div>
                 
                 {activeDropdown === source.id && (
-                  <div className="absolute z-50 top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg border z-10">
+                  <div className="absolute z-50 top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg border">
                     <div className="py-1">
                       <div className="px-3 py-2 text-sm text-gray-500 border-b">Change status:</div>
                       <button
