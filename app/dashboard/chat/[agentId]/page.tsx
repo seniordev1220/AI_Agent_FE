@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ModelSelector } from "@/components/ai-agents/model-selector";
 import { MessageInput } from "@/components/ai-agents/message-input";
-import React from "react";
+import { useSession } from "next-auth/react";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -10,12 +10,16 @@ interface ChatMessage {
 }
 
 interface Agent {
-  id: string;
+  id: number;
   name: string;
-  avatar: string;
+  avatar_base64: string;
   description: string;
-  instruction: string;
-  welcomeMessage: string;
+  instructions: string;
+  welcome_message: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+  knowledge_bases: any[];
 }
 
 export default function ChatPage({
@@ -26,8 +30,10 @@ export default function ChatPage({
   const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [agent, setAgent] = useState<Agent | null>(null);
-  const [agentId, setAgentId] = useState<string | null>(null); // State to store resolved agentId
-
+  const [agentId, setAgentId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { data: session } = useSession();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Resolve the params Promise and set the agentId
@@ -39,46 +45,62 @@ export default function ChatPage({
 
   // Load agent and chat history when agentId is available
   useEffect(() => {
-    if (!agentId) return;
+    if (!agentId || !session) return;
 
-    const storedAgents = JSON.parse(
-      localStorage.getItem("myAgents") || "[]"
-    ) as Agent[];
-    const currentAgent = storedAgents.find((a) => a.id === agentId);
-    if (currentAgent) {
-      setAgent(currentAgent);
-
-      // Get all chat histories from localStorage
-      const allChatHistories = JSON.parse(
-        localStorage.getItem("chathistory") || "{}"
-      );
+    const fetchAgentAndHistory = async () => {
+      setIsLoading(true);
+      setError(null);
       
-      // Get specific agent's chat history or initialize empty array
-      const agentChatHistory = allChatHistories[agentId] || [];
-      setChatHistory(agentChatHistory);
-    }
-  }, [agentId]);
+      try {
+        // Fetch agent from API
+        const agentResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/agents`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.accessToken}`,
+            },
+          }
+        );
 
-  // Save chat history to localStorage whenever it changes
-  useEffect(() => {
-    if (agentId && chatHistory.length > 0) {
-      // Get current chat histories
-      const allChatHistories = JSON.parse(
-        localStorage.getItem("chathistory") || "{}"
-      );
-      
-      // Update the specific agent's chat history
-      allChatHistories[agentId] = chatHistory;
-      
-      // Save back to localStorage
-      localStorage.setItem("chathistory", JSON.stringify(allChatHistories));
-    }
-  }, [chatHistory, agentId]);
+        if (!agentResponse.ok) {
+          throw new Error("Failed to fetch agents");
+        }
 
-  // Log current chat history state for debugging
-  useEffect(() => {
-    console.log("Current chat history state:", chatHistory);
-  }, [chatHistory]);
+        const storedAgents = await agentResponse.json();
+        const currentAgent = storedAgents.find((a: Agent) => a.id.toString() === agentId);
+        
+        if (!currentAgent) {
+          throw new Error("Agent not found");
+        }
+
+        setAgent(currentAgent);
+
+        // Fetch chat history from API
+        const historyResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/chat/${agentId}/history`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.accessToken}`,
+            },
+          }
+        );
+
+        if (!historyResponse.ok) {
+          throw new Error("Failed to fetch chat history");
+        }
+
+        const history = await historyResponse.json();
+        setChatHistory(history.messages);
+      } catch (err) {
+        console.error("Error loading agent:", err);
+        setError(err instanceof Error ? err.message : "An unknown error occurred");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAgentAndHistory();
+  }, [agentId, session]);
 
   // Scroll to the bottom of the chat container when chat history changes
   useEffect(() => {
@@ -90,23 +112,35 @@ export default function ChatPage({
     };
 
     scrollToBottom();
-
     const timeoutId = setTimeout(scrollToBottom, 100);
 
     return () => clearTimeout(timeoutId);
   }, [chatHistory]);
 
   const handleSendMessage = async (message: string) => {
-    const newMessage: ChatMessage = { role: "user", content: message };
+    if (!agent || !session) return;
 
+    const newMessage: ChatMessage = { role: "user", content: message };
     const updatedHistory = [...chatHistory, newMessage];
     setChatHistory(updatedHistory);
 
     try {
-      const response = await fetch("/api/openai", {
+      // Save user message to API
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/${agentId}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.user.accessToken}`,
+        },
+        body: JSON.stringify(newMessage),
+      });
+
+      // Get AI response
+      const aiResponse = await fetch("/api/openai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.user.accessToken}`,
         },
         body: JSON.stringify({
           messages: [
@@ -116,12 +150,12 @@ export default function ChatPage({
             })),
             { role: "user", content: message },
           ],
-          instruction: agent?.instruction,
+          instruction: agent.instructions,
         }),
       });
 
-      const data = await response.json();
-      if (!response.ok) {
+      const data = await aiResponse.json();
+      if (!aiResponse.ok) {
         throw new Error(
           data.error?.message ||
             data.error ||
@@ -129,40 +163,73 @@ export default function ChatPage({
         );
       }
 
-      const aiResponse: ChatMessage = {
+      const assistantMessage: ChatMessage = {
         role: "assistant",
         content: data.response,
       };
 
-      const finalHistory = [...updatedHistory, aiResponse];
-      setChatHistory(finalHistory);
-      
-      // Update localStorage with new chat history
-      const allChatHistories = JSON.parse(
-        localStorage.getItem("chathistory") || "{}"
-      );
-      allChatHistories[agentId!] = finalHistory;
-      localStorage.setItem("chathistory", JSON.stringify(allChatHistories));
-    } catch (error) {
-      console.error("Error getting chat completion:", error);
+      // Save assistant message to API
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/${agentId}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.user.accessToken}`,
+        },
+        body: JSON.stringify(assistantMessage),
+      });
 
+      setChatHistory([...updatedHistory, assistantMessage]);
+    } catch (error) {
+      console.error("Error in chat completion:", error);
       const errorMessage: ChatMessage = {
         role: "assistant",
-        content:
-          "An error occurred while processing your request. Please try again later.",
+        content: "An error occurred while processing your request. Please try again later.",
       };
-
-      const finalHistory = [...updatedHistory, errorMessage];
-      setChatHistory(finalHistory);
-      
-      // Update localStorage with error message
-      const allChatHistories = JSON.parse(
-        localStorage.getItem("chathistory") || "{}"
-      );
-      allChatHistories[agentId!] = finalHistory;
-      localStorage.setItem("chathistory", JSON.stringify(allChatHistories));
+      setChatHistory([...updatedHistory, errorMessage]);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="h-[87vh] flex items-center justify-center">
+        <div className="text-center">
+          <p>Loading agent...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-[87vh] flex items-center justify-center">
+        <div className="text-center text-red-500">
+          <p>Error: {error}</p>
+          <button 
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!agent) {
+    return (
+      <div className="h-[87vh] flex items-center justify-center">
+        <div className="text-center">
+          <p>Agent not found</p>
+          <button 
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            onClick={() => window.history.back()}
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[87vh] flex overflow-hidden">
@@ -178,19 +245,25 @@ export default function ChatPage({
           className="flex-1 p-8 overflow-y-auto flex flex-col gap-6"
         >
           <div className="flex flex-col items-center justify-center mb-8">
-            <img
-              src={agent?.avatar || "/agents/code.svg"}
-              alt={agent?.name || "AI Agent"}
-              className="w-24 h-24 rounded-full mb-4"
-            />
-            <h2 className="text-xl font-semibold mb-2">
-              {agent?.name || "AI Agent"}
-            </h2>
+            {agent.avatar_base64 ? (
+              <img
+                src={`data:image/png;base64,${agent.avatar_base64}`}
+                alt={agent.name}
+                className="w-24 h-24 rounded-full mb-4"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full mb-4 bg-gray-200 flex items-center justify-center">
+                <span className="text-gray-500 text-xl">
+                  {agent.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
+            <h2 className="text-xl font-semibold mb-2">{agent.name}</h2>
             <p className="text-gray-600 text-center mb-2">
-              {agent?.description || "Loading agent description..."}
+              {agent.description}
             </p>
             <p className="text-gray-500 text-center max-w-[600px]">
-              {agent?.welcomeMessage || "Hello! How can I help you today?"}
+              {agent.welcome_message}
             </p>
           </div>
 
@@ -208,12 +281,12 @@ export default function ChatPage({
             ) : (
               <div key={index} className="flex gap-4 max-w-[80%]">
                 <img
-                  src={agent?.avatar || "/agents/code.svg"}
-                  alt={agent?.name || "AI Agent"}
+                  src={`data:image/png;base64,${agent.avatar_base64}`}
+                  alt={agent.name}
                   className="w-12 h-12 rounded-full"
                 />
                 <div>
-                  <p className="font-medium mb-2">{agent?.name || "AI Agent"}</p>
+                  <p className="font-medium mb-2">{agent.name}</p>
                   <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm">
                     <div
                       className="space-y-4 whitespace-pre-wrap prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"

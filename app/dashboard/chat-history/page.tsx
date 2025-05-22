@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
-
+import { useSession } from "next-auth/react"
 interface ChatMessage {
   role: string
   content: string
@@ -27,40 +27,57 @@ export default function ChatHistoryPage() {
   const [chatLogs, setChatLogs] = useState<ChatHistory[]>([])
   const [selectedChats, setSelectedChats] = useState<string[]>([])
   const [agentNames, setAgentNames] = useState<Record<string, string>>({})
+  const { data: session } = useSession()
 
   useEffect(() => {
     // Get agent names from localStorage
-    const myAgents = localStorage.getItem('myAgents')
-    if (myAgents) {
+    const fetchAgents = async () => {
       try {
-        const parsedAgents = JSON.parse(myAgents)
-        const nameMap: Record<string, string> = {}
-        parsedAgents.forEach((agent: { id: string; name: string }) => {
-          nameMap[agent.id] = agent.name
-        })
-        setAgentNames(nameMap)
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/agents`,
+          {
+            headers: {
+              Authorization: `Bearer ${session?.user.accessToken}`,
+            },
+          }
+        );
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch agents');
+        }
+  
+        const agents = await response.json();
+        console.log('Agents:', agents);
+        
+        const nameMap: Record<string, string> = {};
+        agents.forEach((agent: { id: string; name: string }) => {
+          nameMap[agent.id] = agent.name;
+        });
+        setAgentNames(nameMap);
       } catch (error) {
-        console.error('Error parsing myAgents:', error)
+        console.error('Error fetching agents:', error);
       }
-    }
-
-    // Get chat history from localStorage
-    const chatHistory = localStorage.getItem('chathistory')
-    if (chatHistory) {
-      try {
-        const parsedHistory = JSON.parse(chatHistory)
-        const formattedLogs = Object.entries(parsedHistory).map(([id, messages]) => ({
-          id,
-          name: `Chat ${id}`,
-          timestamp: new Date().toLocaleString(),
-          messages: messages as ChatMessage[]
-        }))
-        setChatLogs(formattedLogs)
-      } catch (error) {
-        console.error('Error parsing chat history:', error)
+  
+      // Get chat history from localStorage
+      const chatHistory = localStorage.getItem('chathistory');
+      if (chatHistory) {
+        try {
+          const parsedHistory = JSON.parse(chatHistory);
+          const formattedLogs = Object.entries(parsedHistory).map(([id, messages]) => ({
+            id,
+            name: `Chat ${id}`,
+            timestamp: new Date().toLocaleString(),
+            messages: messages as ChatMessage[]
+          }));
+          setChatLogs(formattedLogs);
+        } catch (error) {
+          console.error('Error parsing chat history:', error);
+        }
       }
-    }
-  }, [])
+    };
+  
+    fetchAgents();
+  }, [session]);
 
   // Handle select all checkbox
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {

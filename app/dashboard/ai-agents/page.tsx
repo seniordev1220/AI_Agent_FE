@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { ModelSelector } from "@/components/ai-agents/model-selector"
 import { MessageInput } from "@/components/ai-agents/message-input"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 
 interface Message {
   id: string
@@ -16,7 +17,7 @@ interface Message {
 interface Agent {
   id: string
   name: string
-  avatar: string
+  avatar_base64: string
   description: string
   greeting: string
 }
@@ -26,14 +27,20 @@ export default function AIAgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
+  const { data: session } = useSession()
 
   useEffect(() => {
+    if (!session) return;
     // Load agents from localStorage on component mount
-    const loadAgents = () => {
-      const storedAgents = localStorage.getItem('myAgents')
-      if (storedAgents) {
-        setAgents(JSON.parse(storedAgents))
-      }
+    const loadAgents = async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+        headers: {
+          'Authorization': `Bearer ${session.user.accessToken}`,
+        },
+      })
+      const data = await response.json()
+      console.log(data)
+      setAgents(data)
     }
 
     loadAgents()
@@ -92,7 +99,7 @@ export default function AIAgentsPage() {
                 onClick={() => handleAgentClick(agent.id)}
               >
                 <Image
-                  src={agent.avatar}
+                  src={`data:image/png;base64,${agent.avatar_base64}`}
                   alt={agent.name}
                   width={64}
                   height={64}

@@ -5,12 +5,13 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CodeIcon, Settings, Plus } from "lucide-react"
 import Image from "next/image"
+import { useSession } from "next-auth/react"
 
 interface Agent {
   id: string
   name: string
   description: string
-  avatar: string
+  avatar_base64: string
   category: string
 }
 
@@ -20,30 +21,35 @@ interface CategorizedAgentsProps {
 
 export function CategorizedAgents({ selectedCategory }: CategorizedAgentsProps) {
   const router = useRouter()
+  const { data: session } = useSession()
   const [allAgents, setAllAgents] = useState<Agent[]>()
 
   useEffect(() => {
-    // Get custom agents from localStorage
-    let myAgents: Agent[] = []
-    try {
-      myAgents = JSON.parse(localStorage.getItem("myAgents") || "[]")
-      // Fallback for missing fields
-      myAgents = myAgents.map((agent) => ({
-        id: agent.id || Date.now().toString(),
-        name: agent.name || "Untitled Agent",
-        description: agent.description || "",
-        avatar: agent.avatar || "/agents/code.svg",
-        category: agent.category || "My Agents"
-      }))
-    } catch {
-      myAgents = []
+    const fetchAgents = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+          headers: {
+            'Authorization': `Bearer ${session?.user?.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        if (!response.ok) throw new Error('Failed to fetch agents')
+        const agents = await response.json()
+        setAllAgents(agents)
+      } catch (error) {
+        console.error('Error fetching agents:', error)
+        setAllAgents([])
+      }
     }
-    setAllAgents([...myAgents])
-  }, [])
+    
+    if (session) {
+      fetchAgents()
+    }
+  }, [session]) // Add session as a dependency
 
   const filteredAgents = allAgents?.filter(agent =>
     selectedCategory === "My Agents"
-      ? allAgents
+      ? true  // Show all agents when "My Agents" is selected
       : agent.category === selectedCategory
   ) || []
 
@@ -69,13 +75,21 @@ export function CategorizedAgents({ selectedCategory }: CategorizedAgentsProps) 
       {filteredAgents.map((agent) => (
         <Card key={agent.id} className="p-6 hover:shadow-sm transition-shadow">
           <div className="flex items-start gap-4">
-            <Image
-              src={agent.avatar}
-              alt={agent.name}
-              width={48}
-              height={48}
-              className="rounded-full"
-            />
+            {agent.avatar_base64 ? (
+                <Image
+                  src={`data:image/png;base64,${agent.avatar_base64}`}
+                  alt={agent.name}
+                  width={48}
+                  height={48}
+                  className="rounded-full"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-500 text-xl">
+                    {agent.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
             <div className="flex-1">
               <h3 className="text-lg font-medium mb-2">{agent.name}</h3>
               <p className="text-gray-600 mb-4">{agent.description}</p>
