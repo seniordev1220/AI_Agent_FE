@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import { format, formatDistanceToNow } from 'date-fns'
 import { useSession } from "next-auth/react"
 
+
 interface DataSource {
   id: string
   icon: string
@@ -29,6 +30,19 @@ export function DataTable() {
       setDataSources(parsedSources);
     }
   };
+
+  const StatusIcon = ({ status }: { status: string }) => {
+  switch (status) {
+    case "Verified":
+      return <CheckCircle className="h-4 w-4 text-green-500" />
+    case "Outdated":
+      return <XCircle className="h-4 w-4 text-red-500" />
+    case "Syncing":
+      return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />
+    default:
+      return null
+  }
+}
 
   useEffect(() => {
     loadDataSources();
