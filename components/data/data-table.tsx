@@ -15,66 +15,9 @@ interface DataSource {
   lastSync: string
 }
 
-const initialDataSources: DataSource[] = [
-  {
-    id: "1",
-    icon: "/data_icon/dropbox.svg",
-    name: "OneDrive",
-    status: "Verified",
-    size: "1 MB",
-    owner: "Jeff Sutherland",
-    lastSync: "3 days ago"
-  },
-  {
-    id: "2",
-    icon: "/data_icon/google-drive.svg",
-    name: "PDF file insurance",
-    status: "Outdated",
-    size: "5.6 MB",
-    owner: "Alice Young",
-    lastSync: "6 months ago"
-  },
-  {
-    id: "3",
-    icon: "/data_icon/onedrive.svg",
-    name: "Sales prospect list",
-    status: "Verified",
-    size: "1 GB",
-    owner: "Rahul G",
-    lastSync: "Syncing"
-  },
-  // Add more data sources as needed
-]
-
-const StatusIcon = ({ status }: { status: string }) => {
-  switch (status) {
-    case "Verified":
-      return <CheckCircle className="h-4 w-4 text-green-500" />
-    case "Outdated":
-      return <XCircle className="h-4 w-4 text-red-500" />
-    case "Syncing":
-      return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />
-    default:
-      return null
-  }
-}
-
-const StatusText = ({ status }: { status: string }) => {
-  switch (status) {
-    case "Verified":
-      return "Verified"
-    case "Outdated":
-      return "Outdated"
-    case "Syncing":
-      return "Syncing"
-    default:
-      return status
-  }
-}
-
 export function DataTable() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [dataSources, setDataSources] = useState<DataSource[]>(initialDataSources);
+  const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
   const { data: session } = useSession()
@@ -83,7 +26,7 @@ export function DataTable() {
     const savedSources = localStorage.getItem('dataSources');
     if (savedSources) {
       const parsedSources = JSON.parse(savedSources);
-      setDataSources([...initialDataSources, ...parsedSources]);
+      setDataSources(parsedSources);
     }
   };
 

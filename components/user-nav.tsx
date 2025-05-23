@@ -16,17 +16,13 @@ import { useRouter } from "next/navigation";
 export function UserNav() {
   const { data: session } = useSession()
   const router = useRouter();
-
-  // Get the user's image, checking both Google and custom auth sources
-  const userImage = session?.user?.image || "/placeholder.svg"
-  
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="icon" className="relative">
-          {session?.user ? (
+          {session?.user?.image ? (
             <img
-              src={userImage}
+              src={session.user.image || "/placeholder.svg"}
               alt={session.user.name || "User"}
               className="h-8 w-8 rounded-full"
             />
