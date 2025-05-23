@@ -66,6 +66,38 @@ export const authOptions = {
     signIn: '/sign-in',
   },
   callbacks: {
+    async signIn({ user, account }: { user: any, account: any }) {
+      if (account?.provider === 'google') {
+        try {
+          // Create or update user in your database
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: user.email,
+              first_name: user.name?.split(' ')[0] || '',
+              last_name: user.name?.split(' ').slice(1).join(' ') || '',
+            }),
+          });
+
+          if (!response.ok) {
+            console.error('Failed to store Google user in database');
+            return false;
+          }
+
+          const data = await response.json();
+          if (data.access_token) {
+            user.accessToken = data.access_token;
+          }
+        } catch (error) {
+          console.error('Error storing Google user:', error);
+          return false;
+        }
+      }
+      return true;
+    },
     async jwt({ token, user }: { token: any, user: any }) {
       if (user && 'accessToken' in user) {
         token.accessToken = user.accessToken

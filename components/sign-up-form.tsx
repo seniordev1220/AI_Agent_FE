@@ -75,7 +75,7 @@ export function SignUpForm() {
       }
 
       // Redirect to dashboard on success
-      router.push("/dashboard")
+      router.push("/dashboard/ai-agents")
       toast.success("Successfully signed up!")
       
     } catch (error) {
@@ -89,7 +89,7 @@ export function SignUpForm() {
   const handleGoogleSignUp = async () => {
     setIsLoading(true)
     try {
-      await signIn("google", { callbackUrl: "/dashboard" })
+      await signIn("google", { callbackUrl: "/dashboard/ai-agents" })
     } catch (error) {
       toast.error("Failed to sign up with Google")
     } finally {
