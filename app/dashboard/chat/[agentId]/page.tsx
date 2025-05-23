@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ModelSelector } from "@/components/ai-agents/model-selector";
 import { MessageInput } from "@/components/ai-agents/message-input";
+import React from "react";
 import { useSession } from "next-auth/react";
 
 interface ChatMessage {
@@ -10,16 +11,12 @@ interface ChatMessage {
 }
 
 interface Agent {
-  id: number;
+  id: string;
   name: string;
-  avatar_base64: string;
+  avatar: string;
   description: string;
-  instructions: string;
-  welcome_message: string;
-  user_id: number;
-  created_at: string;
-  updated_at: string;
-  knowledge_bases: any[];
+  instruction: string;
+  welcomeMessage: string;
 }
 
 export default function ChatPage({
@@ -33,6 +30,7 @@ export default function ChatPage({
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
   const { data: session } = useSession();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -72,7 +70,7 @@ export default function ChatPage({
         if (!currentAgent) {
           throw new Error("Agent not found");
         }
-
+        console.log(currentAgent);
         setAgent(currentAgent);
 
         // Fetch chat history from API
@@ -112,6 +110,7 @@ export default function ChatPage({
     };
 
     scrollToBottom();
+
     const timeoutId = setTimeout(scrollToBottom, 100);
 
     return () => clearTimeout(timeoutId);
@@ -150,7 +149,7 @@ export default function ChatPage({
             })),
             { role: "user", content: message },
           ],
-          instruction: agent.instructions,
+          instruction: agent.instruction,
         }),
       });
 
@@ -189,54 +188,15 @@ export default function ChatPage({
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="h-[87vh] flex items-center justify-center">
-        <div className="text-center">
-          <p>Loading agent...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="h-[87vh] flex items-center justify-center">
-        <div className="text-center text-red-500">
-          <p>Error: {error}</p>
-          <button 
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!agent) {
-    return (
-      <div className="h-[87vh] flex items-center justify-center">
-        <div className="text-center">
-          <p>Agent not found</p>
-          <button 
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            onClick={() => window.history.back()}
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="h-[87vh] flex overflow-hidden">
       <div className="flex-1 flex flex-col bg-white overflow-hidden">
         <div className="sticky top-0 z-10 bg-white pt-4 pb-2 px-4">
           <div className="max-w-[200px]">
-            <ModelSelector />
+            <ModelSelector 
+              value={selectedModel}
+              onChange={(model) => setSelectedModel(model)}
+            />
           </div>
         </div>
 
@@ -245,25 +205,19 @@ export default function ChatPage({
           className="flex-1 p-8 overflow-y-auto flex flex-col gap-6"
         >
           <div className="flex flex-col items-center justify-center mb-8">
-            {agent.avatar_base64 ? (
-              <img
-                src={`data:image/png;base64,${agent.avatar_base64}`}
-                alt={agent.name}
-                className="w-24 h-24 rounded-full mb-4"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-full mb-4 bg-gray-200 flex items-center justify-center">
-                <span className="text-gray-500 text-xl">
-                  {agent.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
-            <h2 className="text-xl font-semibold mb-2">{agent.name}</h2>
+            <img
+              src={`data:image/png;base64,${agent?.avatar_base64}` || "/agents/code.svg"}
+              alt={agent?.name || "AI Agent"}
+              className="w-24 h-24 rounded-full mb-4"
+            />
+            <h2 className="text-xl font-semibold mb-2">
+              {agent?.name || "AI Agent"}
+            </h2>
             <p className="text-gray-600 text-center mb-2">
-              {agent.description}
+              {agent?.description || "Loading agent description..."}
             </p>
             <p className="text-gray-500 text-center max-w-[600px]">
-              {agent.welcome_message}
+              {agent?.welcome_message || "Hello! How can I help you today?"}
             </p>
           </div>
 
@@ -281,12 +235,12 @@ export default function ChatPage({
             ) : (
               <div key={index} className="flex gap-4 max-w-[80%]">
                 <img
-                  src={`data:image/png;base64,${agent.avatar_base64}`}
-                  alt={agent.name}
+                  src={agent?.avatar || "/agents/code.svg"}
+                  alt={agent?.name || "AI Agent"}
                   className="w-12 h-12 rounded-full"
                 />
                 <div>
-                  <p className="font-medium mb-2">{agent.name}</p>
+                  <p className="font-medium mb-2">{agent?.name || "AI Agent"}</p>
                   <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm">
                     <div
                       className="space-y-4 whitespace-pre-wrap prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"

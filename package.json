@@ -9,10 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
     "@auth/core": "latest",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.9.1",
+    "@huggingface/inference": "^3.13.2",
     "@mui/icons-material": "^7.0.2",
     "@mui/material": "^7.0.2",
     "@pinecone-database/pinecone": "^6.0.1",

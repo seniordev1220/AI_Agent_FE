@@ -27,6 +27,7 @@ export default function AIAgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
+  const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo"); // Add this line
   const { data: session } = useSession()
 
   useEffect(() => {
@@ -77,7 +78,10 @@ export default function AIAgentsPage() {
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6 h-full">
       <div className="flex items-center justify-between mb-8">
-        <ModelSelector />
+        <ModelSelector 
+          value={selectedModel}
+          onChange={(model) => setSelectedModel(model)}
+        />
       </div>
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold">Your AI workforce</h1>
@@ -113,7 +117,7 @@ export default function AIAgentsPage() {
             ))
           ) : (
             <div className="col-span-2 text-center py-8 text-gray-500">
-              No agents found. Create your first agent to get started.
+              No agents found. <a href="/dashboard/my-agents/create" className="text-blue-600 hover:underline">Create</a> your first agent to get started.
             </div>
           )}
         </div>

@@ -1,7 +1,8 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { ChevronDown } from "lucide-react"
+import { useSession } from "next-auth/react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,93 +11,113 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 interface AIModel {
-  id: string
-  name: string
-  icon: string
+  model_name: string
+  provider: string
+  logo_path: string
+  is_enabled: boolean
+  is_default: boolean
 }
 
-const aiModels: AIModel[] = [
-  {
-    id: "gpt-35-turbo",
-    name: "GPT 3.5-Turbo",
-    icon: "/model_logo/openai-logo.svg"
-  },
-  {
-    id: "gpt-4o",
-    name: "GPT-4o",
-    icon: "/model_logo/gpt4-mini-logo.svg"
-  },
-  {
-    id: "gpt-4",
-    name: "GPT-4",
-    icon: "/model_logo/openai-logo.svg"
-  },
-  {
-    id: "gemini",
-    name: "Google Gemini",
-    icon: "/model_logo/google-logo.svg"
-  },
-  {
-    id: "claude-2",
-    name: "Claude 2",
-    icon: "/model_logo/anthropic-logo.svg"
-  },
-  {
-    id: "claude-37",
-    name: "Claude 3.7",
-    icon: "/model_logo/anthropic-logo.svg"
-  },
-  {
-    id: "claude-3-sonnet",
-    name: "Claude 3 Sonnet",
-    icon: "/model_logo/anthropic-logo.svg"
-  },
-  {
-    id: "llama-2",
-    name: "Llama 2",
-    icon: "/model_logo/meta-logo.svg"
-  },
-  {
-    id: "mistral-7b",
-    name: "Mistral 7b",
-    icon: "/model_logo/mistral-logo.svg"
-  },
-]
+interface ModelsResponse {
+  default_model: string
+  models: AIModel[]
+  open_sourced_models: AIModel[]
+}
 
-export function ModelSelector() {
-  const [selectedModel, setSelectedModel] = useState(aiModels[1]) // GPT-4o as default
+interface ModelSelectorProps {
+  value: string;
+  onChange: (model: string) => void;
+}
+
+export function ModelSelector({ value, onChange }: ModelSelectorProps) {
+  const { data: session } = useSession()
+  const [models, setModels] = useState<AIModel[]>([])
+  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (!session?.user.accessToken) return
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/models`, {
+          headers: {
+            Authorization: `Bearer ${session.user.accessToken}`,
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch models')
+        }
+
+        const data: ModelsResponse = await response.json()
+        console.log(data)
+        // Combine and filter enabled models
+        const enabledModels = [...data.models, ...data.open_sourced_models]
+          .filter(model => model.is_enabled)
+
+        setModels(enabledModels)
+
+        // Set the default or first enabled model as selected
+        const defaultModel = enabledModels.find(
+          model => model.model_name === data.default_model
+        ) || enabledModels[0]
+        
+        setSelectedModel(defaultModel)
+      } catch (error) {
+        console.error('Error fetching models:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchModels()
+  }, [session])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 p-2">
+        <div className="h-8 w-8 animate-pulse bg-gray-200 rounded-full" />
+        <div className="h-4 w-24 animate-pulse bg-gray-200 rounded" />
+      </div>
+    )
+  }
+
+  if (!selectedModel || models.length === 0) {
+    return null
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-2 hover:bg-gray-100 p-2 rounded-lg transition-colors">
         <div className="flex items-center gap-3">
           <Image
-            src={selectedModel.icon}
-            alt={selectedModel.name}
+            src={selectedModel.logo_path}
+            alt={selectedModel.model_name}
             width={32}
             height={32}
             className="rounded-full"
           />
-          <span className="font-medium">{selectedModel.name}</span>
+          <span className="font-medium">{selectedModel.model_name}</span>
         </div>
         <ChevronDown className="h-4 w-4 text-gray-500" />
       </DropdownMenuTrigger>
       
       <DropdownMenuContent align="start" className="w-[200px]">
-        {aiModels.map((model) => (
+        {models.map((model) => (
           <DropdownMenuItem
-            key={model.id}
+            key={model.model_name}
             className="flex items-center gap-2 py-2"
             onClick={() => setSelectedModel(model)}
           >
             <Image
-              src={model.icon}
-              alt={model.name}
+              src={model.logo_path}
+              alt={model.model_name}
               width={24}
               height={24}
               className="rounded-full"
             />
-            <span>{model.name}</span>
+            <span>{model.model_name}</span>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

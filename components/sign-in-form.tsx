@@ -44,7 +44,7 @@ export function SignInForm() {
 
       await router.refresh()
       
-      router.push("/dashboard")
+      router.push("/dashboard/ai-agents")
       toast.success("Successfully signed in!")
     } catch (error) {
       console.error("Sign-in error:", error)
@@ -57,7 +57,7 @@ export function SignInForm() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
     try {
-      await signIn("google", { callbackUrl: "/dashboard" })
+      await signIn("google", { callbackUrl: "/dashboard/ai-agents" })
     } catch (error) {
       console.error("Google sign-in error:", error)
       toast.error("Failed to sign in with Google")

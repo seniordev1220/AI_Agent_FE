@@ -19,9 +19,9 @@ import {
   Tab
 } from '@mui/material'
 import { useState, useEffect } from 'react'
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 const StyledTab = styled(Tab)({
   textTransform: 'none',
@@ -49,29 +49,43 @@ export default function IntegrationPage() {
   const searchParams = useSearchParams()
   const agentId = searchParams.get('agentId')
   const [selectedTab, setSelectedTab] = useState('embed')
-  const [selectedAgent, setSelectedAgent] = useState('Sales Agent')
+  const [selectedAgent, setSelectedAgent] = useState<string>('')
   const [deploymentEnabled, setDeploymentEnabled] = useState(false)
   const [agentName, setAgentName] = useState('')
   const [greetingMessage, setGreetingMessage] = useState('')
   const [referenceType, setReferenceType] = useState('include')
   const [showCode, setShowCode] = useState(true)
   const [myAgents, setMyAgents] = useState<any[]>([])
+  const { data: session } = useSession()
 
   useEffect(() => {
-    // Load all agents from localStorage
-    const agents = JSON.parse(localStorage.getItem('myAgents') || '[]')
-    setMyAgents(agents)
+    const fetchAgents = async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+        headers: {
+          'Authorization': `Bearer ${session?.user?.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
 
-    // If agentId is provided, select that agent
-    if (agentId) {
-      const agent = agents.find((a: any) => a.id === agentId)
-      if (agent) {
-        setSelectedAgent(agent.name)
-        setAgentName(agent.name)
-        setGreetingMessage(agent.welcomeMessage || '')
+      if (!response.ok) throw new Error('Failed to fetch agents')
+      const agents = await response.json()
+      setMyAgents(agents)
+      console.log(agents)
+      // If agentId is provided, select that agent
+      if (agentId) {
+        const agent = agents.find((a: any) => a.id === agentId)
+        if (agent) {
+            setSelectedAgent(agent.id)
+            setAgentName(agent.name)
+            setGreetingMessage(agent.welcomeMessage || '')
+        }
       }
     }
-  }, [agentId])
+
+    if (session) {
+      fetchAgents()
+    }
+  }, [agentId, session])
 
   const handleTabChange = (newValue: string) => {
     setSelectedTab(newValue)
@@ -136,7 +150,7 @@ export default function IntegrationPage() {
                   onChange={(e) => setSelectedAgent(e.target.value)}
                 >
                   {myAgents.map((agent) => (
-                    <MenuItem key={agent.id} value={agent.name}>
+                    <MenuItem key={agent.id} value={agent.id}>
                       {agent.name}
                     </MenuItem>
                   ))}
@@ -226,7 +240,7 @@ export default function IntegrationPage() {
               onChange={(e) => setSelectedAgent(e.target.value)}
             >
               {myAgents.map((agent) => (
-                <MenuItem key={agent.id} value={agent.name}>
+                <MenuItem key={agent.id} value={agent.id}>
                   {agent.name}
                 </MenuItem>
               ))}

@@ -28,55 +28,73 @@ export default function ChatHistoryPage() {
   const [selectedChats, setSelectedChats] = useState<string[]>([])
   const [agentNames, setAgentNames] = useState<Record<string, string>>({})
   const { data: session } = useSession()
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Get agent names from localStorage
-    const fetchAgents = async () => {
+    if (!session?.user.accessToken) return;
+
+    const fetchData = async () => {
+      setIsLoading(true);
       try {
-        const response = await fetch(
+        // Fetch agents first
+        const agentsResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/agents`,
           {
             headers: {
-              Authorization: `Bearer ${session?.user.accessToken}`,
+              Authorization: `Bearer ${session.user.accessToken}`,
             },
           }
         );
         
-        if (!response.ok) {
+        if (!agentsResponse.ok) {
           throw new Error('Failed to fetch agents');
         }
   
-        const agents = await response.json();
-        console.log('Agents:', agents);
+        const agents = await agentsResponse.json();
         
+        // Create agent name mapping
         const nameMap: Record<string, string> = {};
         agents.forEach((agent: { id: string; name: string }) => {
           nameMap[agent.id] = agent.name;
         });
         setAgentNames(nameMap);
+
+        // Fetch chat history for each agent
+        const chatHistoryPromises = agents.map(async (agent: { id: string }) => {
+          const historyResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/chat/${agent.id}/history`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.accessToken}`,
+              },
+            }
+          );
+
+          if (!historyResponse.ok) {
+            throw new Error(`Failed to fetch chat history for agent ${agent.id}`);
+          }
+
+          const history = await historyResponse.json();
+          return {
+            id: agent.id,
+            name: nameMap[agent.id],
+            timestamp: new Date().toLocaleString(), // You might want to get this from the latest message
+            messages: history.messages
+          };
+        });
+
+        const allChatHistories = await Promise.all(chatHistoryPromises);
+        // Filter out agents with no messages
+        const nonEmptyChats = allChatHistories.filter(chat => chat.messages && chat.messages.length > 0);
+        setChatLogs(nonEmptyChats);
       } catch (error) {
-        console.error('Error fetching agents:', error);
-      }
-  
-      // Get chat history from localStorage
-      const chatHistory = localStorage.getItem('chathistory');
-      if (chatHistory) {
-        try {
-          const parsedHistory = JSON.parse(chatHistory);
-          const formattedLogs = Object.entries(parsedHistory).map(([id, messages]) => ({
-            id,
-            name: `Chat ${id}`,
-            timestamp: new Date().toLocaleString(),
-            messages: messages as ChatMessage[]
-          }));
-          setChatLogs(formattedLogs);
-        } catch (error) {
-          console.error('Error parsing chat history:', error);
-        }
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
   
-    fetchAgents();
+    fetchData();
   }, [session]);
 
   // Handle select all checkbox
@@ -164,7 +182,11 @@ export default function ChatHistoryPage() {
 
       <div className="bg-[#F8F9FC] rounded-lg p-4">
         <h2 className="text-lg mb-4">All conversations</h2>
-        {chatLogs.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-8 text-gray-500">
+            Loading chat history...
+          </div>
+        ) : chatLogs.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             No chat history available
           </div>

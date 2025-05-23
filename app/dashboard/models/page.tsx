@@ -1,7 +1,8 @@
 "use client"
-import { Box, Typography, Button, Card, Switch, styled, Select, MenuItem, FormControl, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
+import { Box, Typography, Button, Card, Switch, styled, Select, MenuItem, FormControl, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material'
 import Image from 'next/image'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 
 const ModelCard = styled(Card)(({ theme }) => ({
   display: 'flex',
@@ -17,50 +18,129 @@ const ModelCard = styled(Card)(({ theme }) => ({
 }))
 
 interface Model {
-  name: string
-  logo: string
-  enabled: boolean
+  model_name: string
+  provider: string
+  logo_path: string
+  is_enabled: boolean
+  is_default: boolean
 }
 
-const models: Model[] = [
-  { name: 'GPT-4.5', logo: '/model_logo/openai-logo.svg', enabled: true },
-  { name: 'O1-mini', logo: '/model_logo/gpt4-mini-logo.svg', enabled: false },
-  { name: 'GPT-4o Mini', logo: '/model_logo/gpt4-mini-logo.svg', enabled: false },
-  { name: 'Claude-3.5', logo: '/model_logo/anthropic-logo.svg', enabled: true },
-  { name: 'Claude-3.7', logo: '/model_logo/anthropic-logo.svg', enabled: true },
-  { name: 'Gemini', logo: '/model_logo/google-logo.svg', enabled: false },
-  { name: 'Mistral', logo: '/model_logo/mistral-logo.svg', enabled: false },
-]
-
-const openSourcedModels: Model[] = [
-  { name: 'Hugging Face', logo: '/model_logo/hf-logo.svg', enabled: false },
-  { name: 'DeepSeek', logo: '/model_logo/deepseek-logo.svg', enabled: false },
-  { name: 'Perplexity AI', logo: '/model_logo/perplexity-logo.svg', enabled: false },
-  { name: 'Meta: llama. 3.2 1B', logo: '/model_logo/meta-logo.svg', enabled: false },
-]
-
 export default function ModelsPage() {
-  const [defaultModel, setDefaultModel] = React.useState('Claude-3.7')
-  const [customModelDialogOpen, setCustomModelDialogOpen] = React.useState(false)
-  const [modelStates, setModelStates] = React.useState<Record<string, boolean>>(
-    models.reduce((acc, model) => ({ ...acc, [model.name]: model.enabled }), {})
-  )
-  const [openSourcedModelStates, setOpenSourcedModelStates] = React.useState<Record<string, boolean>>(
-    openSourcedModels.reduce((acc, model) => ({ ...acc, [model.name]: model.enabled }), {})
-  )
+  const { data: session } = useSession()
+  const [defaultModel, setDefaultModel] = useState('')
+  const [models, setModels] = useState<Model[]>([])
+  const [customModelDialogOpen, setCustomModelDialogOpen] = useState(false)
+  const [openSourcedModels, setOpenSourcedModels] = useState<Model[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const handleModelToggle = (modelName: string) => {
-    setModelStates(prev => ({
-      ...prev,
-      [modelName]: !prev[modelName]
-    }))
+  useEffect(() => {
+    if (!session?.user.accessToken) return
+
+    const fetchModels = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/models`, {
+          headers: {
+            Authorization: `Bearer ${session.user.accessToken}`,
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch models')
+        }
+
+        const data = await response.json()
+        setDefaultModel(data.default_model)
+        setModels(data.models)
+        setOpenSourcedModels(data.open_sourced_models)
+      } catch (error) {
+        console.error('Error fetching models:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchModels()
+  }, [session])
+
+  const handleModelToggle = async (modelName: string) => {
+    if (!session?.user.accessToken) return
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/models/${modelName}/toggle`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${session.user.accessToken}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle model')
+      }
+
+      const updatedModel = await response.json()
+
+      // Update the models state
+      setModels(prevModels =>
+        prevModels.map(model =>
+          model.model_name === modelName
+            ? { ...model, is_enabled: updatedModel.is_enabled }
+            : model
+        )
+      )
+
+      setOpenSourcedModels(prevModels =>
+        prevModels.map(model =>
+          model.model_name === modelName
+            ? { ...model, is_enabled: updatedModel.is_enabled }
+            : model
+        )
+      )
+    } catch (error) {
+      console.error('Error toggling model:', error)
+    }
   }
 
-  const handleOpenSourcedToggle = (modelName: string) => {
-    setOpenSourcedModelStates(prev => ({
-      ...prev,
-      [modelName]: !prev[modelName]
-    }))
+  const handleDefaultModelChange = async (newDefaultModel: string) => {
+    if (!session?.user.accessToken) return
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/models/default/${newDefaultModel}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${session.user.accessToken}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to set default model')
+      }
+
+      setDefaultModel(newDefaultModel)
+    } catch (error) {
+      console.error('Error setting default model:', error)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <Box sx={{ 
+        p: 4, 
+        maxWidth: '1200px', 
+        margin: '0 auto',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '50vh'
+      }}>
+        <CircularProgress />
+      </Box>
+    )
   }
 
   return (
@@ -76,7 +156,7 @@ export default function ModelsPage() {
         <FormControl sx={{ maxWidth: '600px', width: '100%' }}>
           <Select
             value={defaultModel}
-            onChange={(e) => setDefaultModel(e.target.value)}
+            onChange={(e) => handleDefaultModelChange(e.target.value)}
             sx={{
               backgroundColor: 'background.paper',
               '& .MuiOutlinedInput-notchedOutline': {
@@ -84,52 +164,38 @@ export default function ModelsPage() {
               },
             }}
           >
-            {models.map((model) => (
-              <MenuItem key={model.name} value={model.name}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Image
-                    src={model.logo}
-                    alt={`${model.name} logo`}
-                    width={24}
-                    height={24}
-                  />
-                  {model.name}
-                </Box>
-              </MenuItem>
-            ))}
+            {models
+              .filter(model => model.is_enabled)
+              .map((model) => (
+                <MenuItem key={model.model_name} value={model.model_name}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Image
+                      src={model.logo_path}
+                      alt={`${model.model_name} logo`}
+                      width={24}
+                      height={24}
+                    />
+                    {model.model_name}
+                  </Box>
+                </MenuItem>
+              ))}
           </Select>
         </FormControl>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-          <Button
-            variant="contained"
-            onClick={() => setCustomModelDialogOpen(true)}
-            sx={{
-              bgcolor: 'black',
-              color: 'white',
-              '&:hover': {
-                bgcolor: 'black',
-                opacity: 0.9,
-              },
-            }}
-          >
-            Add custom model
-          </Button>
-        </Box>
       </Box>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 3, mb: 6 }}>
         {models.map((model) => (
-          <ModelCard key={model.name}>
+          <ModelCard key={model.model_name}>
             <Image
-              src={model.logo}
-              alt={`${model.name} logo`}
+              src={model.logo_path}
+              alt={`${model.model_name} logo`}
               width={40}
               height={40}
             />
-            <Typography sx={{ flex: 1 }}>{model.name}</Typography>
+            <Typography sx={{ flex: 1 }}>{model.model_name}</Typography>
             <Switch 
-              checked={modelStates[model.name] ?? model.enabled}
-              onChange={() => handleModelToggle(model.name)}
+              checked={model.is_enabled}
+              onChange={() => handleModelToggle(model.model_name)}
             />
           </ModelCard>
         ))}
@@ -141,17 +207,17 @@ export default function ModelsPage() {
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 3 }}>
         {openSourcedModels.map((model) => (
-          <ModelCard key={model.name}>
+          <ModelCard key={model.model_name}>
             <Image
-              src={model.logo}
-              alt={`${model.name} logo`}
+              src={model.logo_path}
+              alt={`${model.model_name} logo`}
               width={40}
               height={40}
             />
-            <Typography sx={{ flex: 1 }}>{model.name}</Typography>
+            <Typography sx={{ flex: 1 }}>{model.model_name}</Typography>
             <Switch 
-              checked={openSourcedModelStates[model.name] ?? false}
-              onChange={() => handleOpenSourcedToggle(model.name)}
+              checked={model.is_enabled}
+              onChange={() => handleModelToggle(model.model_name)}
             />
           </ModelCard>
         ))}

@@ -24,7 +24,7 @@ export function Header() {
         {isMobile ? (
           <div className="flex w-full items-center justify-between">
             <a 
-              href="/book-call" 
+              href="https://tidycal.com/fatima-awan/finiite-ai-demo" 
               className="text-blue-600 hover:underline text-sm whitespace-nowrap"
             >
               Book a call
@@ -43,7 +43,7 @@ export function Header() {
               <span className="text-blue-600 font-medium">Tip:</span>
               <span className="text-gray-600">
                 Need help setting up Agents or want Custom Solutions?
-                <a href="/book-call" className="text-blue-600 hover:underline ml-1">
+                <a href="https://tidycal.com/fatima-awan/finiite-ai-demo" className="text-blue-600 hover:underline ml-1">
                   Book a call with us!
                 </a>
               </span>

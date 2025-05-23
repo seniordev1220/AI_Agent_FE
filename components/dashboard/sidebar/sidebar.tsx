@@ -59,7 +59,7 @@ export function Sidebar({ className }: SidebarProps) {
             <Logo />
             <button 
               className="w-full mt-4 mb-2 py-2 rounded-lg bg-[#9FB5F1] hover:bg-[#8CA1E0] text-white font-semibold text-base flex items-center justify-center"
-              onClick={() => console.log("New Chat")}
+              onClick={() => window.location.href = '/dashboard/ai-agents'}
             >
               + New Chat
             </button>
