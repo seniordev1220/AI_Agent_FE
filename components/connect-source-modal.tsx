@@ -4,6 +4,7 @@ import { Input } from "./ui/input"
 import { useState } from "react"
 import { Label } from "./ui/label"
 import { AlertCircle, RefreshCw, CheckCircle } from "lucide-react"
+import { useSession } from "next-auth/react"
 
 interface ConnectSourceModalProps {
   isOpen: boolean
@@ -30,78 +31,117 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success'>('idle');
+  const { data: session } = useSession();
 
   const getSourceFields = (): SourceField[] => {
     switch (selectedSource) {
       case 'Airtable':
         return [
-          { key: 'apiKey', label: 'API Key', type: 'password' },
-          { key: 'baseId', label: 'Base ID', type: 'text' },
+          { key: 'api_key', label: 'API Key', type: 'password' },
+          { key: 'base_id', label: 'Base ID', type: 'text' },
+          { key: 'table_name', label: 'Table Name', type: 'text' },
         ];
       case 'Dropbox':
         return [
-          { key: 'accessToken', label: 'Access Token', type: 'password' },
-          { key: 'appKey', label: 'App Key', type: 'password' },
-          { key: 'appSecret', label: 'App Secret', type: 'password' },
+          { key: 'access_token', label: 'Access Token', type: 'password' },
+          { key: 'folder_path', label: 'Folder Path', type: 'text', 
+            placeholder: '/path/to/folder' },
+          { key: 'recursive', label: 'Include Subfolders', type: 'checkbox' },
         ];
       case 'Google Drive':
         return [
-          { key: 'oauthCredentials', label: 'OAuth Credentials', type: 'file' },
-          { key: 'serviceAccount', label: 'Service Account Key (Optional)', type: 'file' },
+          { key: 'type', label: 'Service Account Type', type: 'text' },
+          { key: 'project_id', label: 'Project ID', type: 'text' },
+          { key: 'private_key_id', label: 'Private Key ID', type: 'password' },
+          { key: 'private_key', label: 'Private Key', type: 'textarea' },
+          { key: 'client_email', label: 'Client Email', type: 'email' },
+          { key: 'client_id', label: 'Client ID', type: 'text' },
         ];
       case 'Slack':
         return [
-          { key: 'oauthToken', label: 'OAuth Token', type: 'password' },
-          { key: 'botToken', label: 'Bot Token (Optional)', type: 'password' },
-        ];
-      case 'Upload Files':
-        return [
-          { key: 'files', label: 'Select Files (max 20MB per file)', type: 'file', multiple: true },
+          { key: 'bot_token', label: 'Bot Token', type: 'password' },
+          { key: 'channel_ids', label: 'Channel IDs (comma-separated)', type: 'text',
+            placeholder: 'C1234567890,C0987654321' },
+          { key: 'oldest_date', label: 'Fetch Messages From', type: 'date' },
         ];
       case 'GitHub':
         return [
-          { key: 'personalAccessToken', label: 'Personal Access Token', type: 'password' },
-          { key: 'oauthToken', label: 'OAuth Token (Alternative)', type: 'password', required: false },
+          { key: 'access_token', label: 'Access Token', type: 'password' },
+          { key: 'repository', label: 'Repository', type: 'text',
+            placeholder: 'owner/repo-name' },
+          { key: 'branch', label: 'Branch', type: 'text',
+            placeholder: 'main' },
+          { key: 'file_types', label: 'File Types (comma-separated)', type: 'text',
+            placeholder: '.py,.js,.md' },
         ];
       case 'One Drive':
         return [
-          { key: 'oauthCredentials', label: 'OAuth Credentials', type: 'file' },
-          { key: 'clientId', label: 'Client ID', type: 'text' },
-          { key: 'clientSecret', label: 'Client Secret', type: 'password' },
+          { key: 'client_id', label: 'Client ID', type: 'text' },
+          { key: 'client_secret', label: 'Client Secret', type: 'password' },
+          { key: 'tenant_id', label: 'Tenant ID', type: 'text' },
+          { key: 'folder_path', label: 'Folder Path', type: 'text',
+            placeholder: '/Documents/Folder' },
         ];
       case 'Sharepoint':
         return [
-          { key: 'oauthCredentials', label: 'OAuth Credentials', type: 'file' },
-          { key: 'siteUrl', label: 'Site URL', type: 'url' },
-          { key: 'tenantId', label: 'Tenant ID', type: 'text' },
+          { key: 'client_id', label: 'Client ID', type: 'text' },
+          { key: 'client_secret', label: 'Client Secret', type: 'password' },
+          { key: 'site_url', label: 'Site URL', type: 'url' },
+          { key: 'tenant_id', label: 'Tenant ID', type: 'text' },
+          { key: 'folder_path', label: 'Folder Path', type: 'text',
+            placeholder: '/sites/your-site/Shared Documents' },
         ];
       case 'Web Scraper':
         return [
-          { key: 'urls', label: 'URLs (one per line)', type: 'textarea' },
-          { key: 'scrapingRules', label: 'Scraping Rules (JSON)', type: 'textarea' },
-          { key: 'apiKey', label: 'API Key (if applicable)', type: 'password', required: false },
+          { key: 'urls', label: 'URLs (one per line)', type: 'textarea',
+            placeholder: 'https://example.com/page1\nhttps://example.com/page2' },
+          { key: 'css_selectors', label: 'CSS Selectors (JSON)', type: 'textarea',
+            placeholder: '{\n  "content": "article.main-content",\n  "title": "h1.title"\n}' },
+          { key: 'max_depth', label: 'Max Depth', type: 'number',
+            placeholder: '2', required: false },
+          { key: 'follow_links', label: 'Follow Links', type: 'checkbox' },
         ];
       case 'Snowflake':
         return [
-          { key: 'accountName', label: 'Account Name', type: 'text' },
+          { key: 'account', label: 'Account', type: 'text' },
           { key: 'username', label: 'Username', type: 'text' },
           { key: 'password', label: 'Password', type: 'password' },
           { key: 'warehouse', label: 'Warehouse', type: 'text' },
           { key: 'database', label: 'Database', type: 'text' },
           { key: 'schema', label: 'Schema', type: 'text' },
+          { key: 'query', label: 'Query', type: 'textarea',
+            placeholder: 'SELECT * FROM your_table' },
         ];
       case 'Salesforce':
         return [
-          { key: 'oauthCredentials', label: 'OAuth Credentials', type: 'file' },
-          { key: 'clientId', label: 'Client ID', type: 'text' },
-          { key: 'clientSecret', label: 'Client Secret', type: 'password' },
-          { key: 'instanceUrl', label: 'Instance URL', type: 'url', 
-            placeholder: 'https://your-instance.salesforce.com' },
+          { key: 'username', label: 'Username', type: 'text' },
+          { key: 'password', label: 'Password', type: 'password' },
+          { key: 'security_token', label: 'Security Token', type: 'password' },
+          { key: 'domain', label: 'Domain', type: 'text',
+            placeholder: 'login.salesforce.com' },
+          { key: 'objects', label: 'Objects (comma-separated)', type: 'text',
+            placeholder: 'Account,Contact,Opportunity' },
         ];
       case 'Hubspot':
         return [
-          { key: 'apiKey', label: 'API Key', type: 'password' },
-          { key: 'oauthToken', label: 'OAuth Token (Alternative)', type: 'password', required: false },
+          { key: 'api_key', label: 'API Key', type: 'password' },
+          { key: 'objects', label: 'Objects (comma-separated)', type: 'text',
+            placeholder: 'contacts,companies,deals' },
+          { key: 'properties', label: 'Properties (comma-separated)', type: 'text',
+            placeholder: 'email,firstname,lastname' },
+          { key: 'limit', label: 'Limit', type: 'number',
+            placeholder: '1000', required: false },
+        ];
+      case 'Upload Files':
+        return [
+          { 
+            key: 'files', 
+            label: 'Select Files', 
+            type: 'file',
+            multiple: true,
+            accept: '.pdf,.doc,.docx,.txt,.md,.csv',
+            required: true 
+          }
         ];
       default:
         return [];
@@ -114,32 +154,32 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
 
     switch (selectedSource) {
       case 'Airtable':
-        if (!formData.apiKey?.match(/^pat[a-zA-Z0-9]{14,}$/)) {
-          newErrors.push({ field: 'apiKey', message: 'Invalid API key format' });
+        if (!formData.api_key?.match(/^pat[a-zA-Z0-9]{14,}$/)) {
+          newErrors.push({ field: 'api_key', message: 'Invalid API key format' });
         }
-        if (!formData.baseId?.match(/^app[a-zA-Z0-9]{14}$/)) {
-          newErrors.push({ field: 'baseId', message: 'Invalid Base ID format' });
+        if (!formData.base_id?.match(/^app[a-zA-Z0-9]{14}$/)) {
+          newErrors.push({ field: 'base_id', message: 'Invalid Base ID format' });
         }
         break;
 
       case 'Dropbox':
-        if (!formData.accessToken?.startsWith('sl.')) {
-          newErrors.push({ field: 'accessToken', message: 'Invalid access token format' });
+        if (!formData.access_token?.startsWith('sl.')) {
+          newErrors.push({ field: 'access_token', message: 'Invalid access token format' });
         }
-        if (formData.appKey?.length < 15) {
-          newErrors.push({ field: 'appKey', message: 'App key must be at least 15 characters' });
+        if (formData.folder_path?.length < 15) {
+          newErrors.push({ field: 'folder_path', message: 'Folder path must be at least 15 characters' });
         }
         break;
 
       case 'GitHub':
-        if (!formData.personalAccessToken?.match(/^ghp_[a-zA-Z0-9]{36}$/)) {
-          newErrors.push({ field: 'personalAccessToken', message: 'Invalid personal access token format' });
+        if (!formData.access_token?.match(/^ghp_[a-zA-Z0-9]{36}$/)) {
+          newErrors.push({ field: 'access_token', message: 'Invalid access token format' });
         }
         break;
 
       case 'Snowflake':
-        if (!formData.accountName) {
-          newErrors.push({ field: 'accountName', message: 'Account name is required' });
+        if (!formData.account) {
+          newErrors.push({ field: 'account', message: 'Account is required' });
         }
         if (!formData.username) {
           newErrors.push({ field: 'username', message: 'Username is required' });
@@ -151,11 +191,11 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
 
       case 'Web Scraper':
         try {
-          if (formData.scrapingRules) {
-            JSON.parse(formData.scrapingRules);
+          if (formData.css_selectors) {
+            JSON.parse(formData.css_selectors);
           }
         } catch {
-          newErrors.push({ field: 'scrapingRules', message: 'Invalid JSON format' });
+          newErrors.push({ field: 'css_selectors', message: 'Invalid JSON format' });
         }
         if (formData.urls) {
           const urlList = formData.urls.split('\n');
@@ -170,11 +210,11 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
         break;
 
       case 'Salesforce':
-        if (!formData.instanceUrl?.match(/^https:\/\/[a-zA-Z0-9-]+\.salesforce\.com$/)) {
-          newErrors.push({ field: 'instanceUrl', message: 'Invalid Salesforce instance URL' });
+        if (!formData.domain?.match(/^https:\/\/[a-zA-Z0-9-]+\.salesforce\.com$/)) {
+          newErrors.push({ field: 'domain', message: 'Invalid Salesforce domain' });
         }
-        if (!formData.clientId || formData.clientId.length < 10) {
-          newErrors.push({ field: 'clientId', message: 'Invalid client ID' });
+        if (!formData.client_id || formData.client_id.length < 10) {
+          newErrors.push({ field: 'client_id', message: 'Invalid client ID' });
         }
         break;
 
@@ -187,12 +227,12 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
 
       case 'Sharepoint':
         try {
-          new URL(formData.siteUrl);
+          new URL(formData.site_url);
         } catch {
-          newErrors.push({ field: 'siteUrl', message: 'Invalid SharePoint site URL' });
+          newErrors.push({ field: 'site_url', message: 'Invalid SharePoint site URL' });
         }
-        if (!formData.tenantId?.match(/^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/)) {
-          newErrors.push({ field: 'tenantId', message: 'Invalid tenant ID format' });
+        if (!formData.tenant_id?.match(/^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/)) {
+          newErrors.push({ field: 'tenant_id', message: 'Invalid tenant ID format' });
         }
         break;
     }
@@ -211,55 +251,136 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      setUploadStatus('uploading');
 
-        // Calculate total size for uploaded files
-        let totalSize = "0 MB";
-        if (selectedSource === "Upload Files" && formData.files) {
+      try {
+        if (selectedSource === 'Upload Files') {
+          // Handle file uploads one at a time
           const files = formData.files as File[];
-          const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
-          
-          // Convert bytes to appropriate unit
-          if (totalBytes < 1024 * 1024) {
-            totalSize = `${(totalBytes / 1024).toFixed(1)} KB`;
-          } else if (totalBytes < 1024 * 1024 * 1024) {
-            totalSize = `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
-          } else {
-            totalSize = `${(totalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+          const uploadedSources = [];
+
+          for (const file of files) {
+            const fileFormData = new FormData();
+            fileFormData.append('file', file);
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/upload`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session?.user?.accessToken}`
+              },
+              body: fileFormData
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.detail || `Failed to upload file: ${file.name}`);
+            }
+
+            const result = await response.json();
+            uploadedSources.push(result);
           }
+
+          setUploadStatus('success');
+          window.dispatchEvent(new Event('sourceAdded'));
+          
+          // Close modal after short delay to show success state
+          setTimeout(() => {
+            onClose();
+          }, 1000);
+          
+          return;
         }
 
-        // Get user name from browser or system
-        const owner = localStorage.getItem('userName') || 
-                     (typeof window !== 'undefined' && window.navigator?.userAgent.includes('Windows') ? 
-                     'Windows User' : 'Current User');
-
-        // Add new source to localStorage with ISO timestamp
-        const existingSources = JSON.parse(localStorage.getItem('dataSources') || '[]');
-        const newSource = {
-          id: Date.now().toString(),
-          icon: selectedSource === "Upload Files" ? 
-                "/data_icon/file-icon.svg" : 
-                `/data_icon/${selectedSource?.toLowerCase().replace(' ', '-')}.svg`,
-          name: selectedSource === "Upload Files" ? 
-                (formData.files?.[0]?.name || "Uploaded Files") :
-                selectedSource,
-          status: "Verified" as const,
-          size: totalSize,
-          owner: "Current User",
-          lastSync: new Date().toISOString() // Store as ISO string
+        // Handle other data sources...
+        const dataSourcePayload = {
+          name: selectedSource ?? '',
+          source_type: (selectedSource ?? '').toLowerCase().replace(' ', '_'),
+          connection_settings: {}
         };
+
+        // Process form data based on source type
+        switch (selectedSource) {
+          case 'Airtable':
+          case 'Hubspot':
+            dataSourcePayload.connection_settings = formData;
+            break;
+          
+          case 'Dropbox':
+          case 'GitHub':
+          case 'One Drive':
+          case 'Sharepoint':
+            dataSourcePayload.connection_settings = {
+              ...formData,
+              // Convert folder_path to proper format if exists
+              folder_path: formData.folder_path?.startsWith('/') 
+                ? formData.folder_path 
+                : `/${formData.folder_path}`
+            };
+            break;
+
+          case 'Slack':
+            dataSourcePayload.connection_settings = {
+              ...formData,
+              // Convert comma-separated channel_ids to array
+              channel_ids: formData.channel_ids?.split(',').map((id: string) => id.trim())
+            };
+            break;
+
+          case 'Web Scraper':
+            dataSourcePayload.connection_settings = {
+              urls: formData.urls?.split('\n').map((url: string) => url.trim()),
+              css_selectors: JSON.parse(formData.css_selectors || '{}'),
+              max_depth: parseInt(formData.max_depth) || 2,
+              follow_links: Boolean(formData.follow_links)
+            };
+            break;
+
+          case 'Salesforce':
+          case 'Hubspot':
+            dataSourcePayload.connection_settings = {
+              ...formData,
+              // Convert comma-separated lists to arrays
+              objects: formData.objects?.split(',').map((obj: string) => obj.trim()),
+              properties: formData.properties?.split(',').map((prop: string) => prop.trim())
+            };
+            break;
+
+          default:
+            dataSourcePayload.connection_settings = formData;
+        }
+
+        // Make API request to create data source
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.user?.accessToken}`
+          },
+          body: JSON.stringify(dataSourcePayload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Failed to connect data source');
+        }
+
+        setUploadStatus('success');
         
-        localStorage.setItem('dataSources', JSON.stringify([...existingSources, newSource]));
-        
-        // Dispatch a custom event to notify DataTable
+        // Dispatch custom event to refresh data sources list
         window.dispatchEvent(new Event('sourceAdded'));
         
-        onClose();
+        // Close modal after short delay to show success state
+        setTimeout(() => {
+          onClose();
+        }, 1000);
+
       } catch (error) {
-        setErrors([{ field: 'general', message: 'Connection failed. Please try again.' }]);
+        console.error('Error connecting data source:', error);
+        setErrors([{ 
+          field: 'general', 
+          message: error instanceof Error ? error.message : 'An error occurred while connecting the data source'
+        }]);
+        setUploadStatus('idle');
       }
     }
   };

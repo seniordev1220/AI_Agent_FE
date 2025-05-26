@@ -4,17 +4,33 @@ import Image from "next/image"
 import { useState, useEffect } from "react"
 import { format, formatDistanceToNow } from 'date-fns'
 import { useSession } from "next-auth/react"
-
+import { formatBytes } from "@/lib/utils"
 
 interface DataSource {
   id: string
-  icon: string
   name: string
-  status: "Verified" | "Outdated" | "Syncing" | "To verify"
-  size: string
+  source_type: string
+  is_connected: boolean
+  created_at: string
+  updated_at: string
   owner: string
-  lastSync: string
+  raw_size_bytes: number
+  document_count: number
 }
+
+const formatSize = (bytes: number, documentCount: number) => {
+  if (!bytes && !documentCount) return "N/A";
+  
+  const parts = [];
+  if (bytes) {
+    parts.push(formatBytes(bytes));
+  }
+  if (documentCount) {
+    parts.push(`${documentCount.toLocaleString()} documents`);
+  }
+  
+  return parts.join(' • ');
+};
 
 export function DataTable() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -23,52 +39,81 @@ export function DataTable() {
   const itemsPerPage = 8;
   const { data: session } = useSession()
 
-  const loadDataSources = () => {
-    const savedSources = localStorage.getItem('dataSources');
-    if (savedSources) {
-      const parsedSources = JSON.parse(savedSources);
-      setDataSources(parsedSources);
+  const loadDataSources = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources`, {
+        headers: {
+          'Authorization': `Bearer ${session?.user?.accessToken}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch data sources');
+      
+      const sources = await response.json();
+      setDataSources(sources);
+    } catch (error) {
+      console.error('Error loading data sources:', error);
     }
   };
 
-  const StatusIcon = ({ status }: { status: string }) => {
-  switch (status) {
-    case "Verified":
+  const getSourceIcon = (sourceType: string) => {
+    const iconMap: { [key: string]: string } = {
+      airtable: "/data_icon/airtable.svg",
+      dropbox: "/data_icon/dropbox.svg",
+      google_drive: "/data_icon/google-drive.svg",
+      slack: "/data_icon/slack.svg",
+      github: "/data_icon/github.svg",
+      one_drive: "/data_icon/onedrive.svg",
+      sharepoint: "/data_icon/sharepoint.svg",
+      web_scraper: "/data_icon/web.svg",
+      snowflake: "/data_icon/snowflake.svg",
+      salesforce: "/data_icon/salesforce.svg",
+      hubspot: "/data_icon/hubspot.svg"
+    };
+    return iconMap[sourceType] || "/data_icon/file-icon.svg";
+  };
+
+  const StatusIcon = ({ isConnected }: { isConnected: boolean }) => {
+    if (isConnected === true) {
       return <CheckCircle className="h-4 w-4 text-green-500" />
-    case "Outdated":
+    } else if (isConnected === false) {
       return <XCircle className="h-4 w-4 text-red-500" />
-    case "Syncing":
-      return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />
-    default:
-      return null
-  }
-}
+    } else {
+      return <AlertCircle className="h-4 w-4 text-orange-500" />
+    }
+  };
+
+  const getStatusText = (isConnected: boolean | null) => {
+    if (isConnected === true) {
+      return "Mark as verified";
+    } else if (isConnected === false) {
+      return "Mark out of date";
+    } else {
+      return "Mark to verify";
+    }
+  };
 
   useEffect(() => {
-    loadDataSources();
+    if (session?.user?.accessToken) {
+      loadDataSources();
+    }
 
-    // Add event listener for new sources
     const handleSourceAdded = () => {
       loadDataSources();
     };
 
     window.addEventListener('sourceAdded', handleSourceAdded);
-
-    // Cleanup
     return () => {
       window.removeEventListener('sourceAdded', handleSourceAdded);
     };
-  }, []);
+  }, [session]);
 
   // Function to format the lastSync timestamp
   const formatLastSync = (timestamp: string) => {
     try {
-      if (timestamp === "Just now") return timestamp;
       const date = new Date(timestamp);
-      
-      // Show exact date/time when hovering
-      const exactDateTime = format(date, 'PPpp'); // e.g., "Apr 29, 2023, 3:00 PM"
-      const relativeTime = formatDistanceToNow(date, { addSuffix: true }); // e.g., "2 hours ago"
+      const exactDateTime = format(date, 'PPpp');
+      const relativeTime = formatDistanceToNow(date, { addSuffix: true });
       
       return (
         <span title={exactDateTime}>
@@ -76,7 +121,7 @@ export function DataTable() {
         </span>
       );
     } catch {
-      return timestamp;
+      return "Never";
     }
   };
 
@@ -85,21 +130,34 @@ export function DataTable() {
   const endIndex = startIndex + itemsPerPage;
   const currentItems = dataSources.slice(startIndex, endIndex);
 
-  const handleStatusChange = (sourceId: string, newStatus: DataSource['status']) => {
-    const loginedUser = session?.user?.name || 'Unknown User';
-    setDataSources(prev => 
-      prev.map(source =>
-        source.id === sourceId 
-          ? { 
-              ...source, 
-              status: newStatus,
-              owner: loginedUser,
-              lastSync: "Just now"
-            } 
-          : source
-      )
-    );
-    setActiveDropdown(null);
+  const handleStatusChange = async (sourceId: string, isConnected: boolean | null) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/${sourceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.accessToken}`
+        },
+        body: JSON.stringify({
+          is_connected: isConnected
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+      // Update local state
+      setDataSources(prev => 
+        prev.map(source =>
+          source.id === sourceId 
+            ? { ...source, is_connected: isConnected ?? false }
+            : source
+        )
+      );
+      setActiveDropdown(null);
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   };
 
   const handleNextPage = () => {
@@ -133,7 +191,7 @@ export function DataTable() {
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 relative flex-shrink-0">
                     <Image
-                      src={source.icon}
+                      src={getSourceIcon(source.source_type)}
                       alt={source.name}
                       fill
                       className="object-contain"
@@ -149,8 +207,8 @@ export function DataTable() {
                   className="flex items-center gap-2 cursor-pointer"
                   onClick={() => setActiveDropdown(activeDropdown === source.id ? null : source.id)}
                 >
-                  <StatusIcon status={source.status} />
-                  <span className="text-sm">{source.status}</span>
+                  <StatusIcon isConnected={source.is_connected} />
+                  <span className="text-sm">{getStatusText(source.is_connected)}</span>
                 </div>
                 
                 {activeDropdown === source.id && (
@@ -159,21 +217,21 @@ export function DataTable() {
                       <div className="px-3 py-2 text-sm text-gray-500 border-b">Change status:</div>
                       <button
                         className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                        onClick={() => handleStatusChange(source.id, "Verified")}
+                        onClick={() => handleStatusChange(source.id, true)}
                       >
                         <CheckCircle className="h-4 w-4 text-green-500" />
                         <span>Mark as verified</span>
                       </button>
                       <button
                         className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                        onClick={() => handleStatusChange(source.id, "Outdated")}
+                        onClick={() => handleStatusChange(source.id, false)}
                       >
                         <XCircle className="h-4 w-4 text-red-500" />
                         <span>Mark out of date</span>
                       </button>
                       <button
                         className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                        onClick={() => handleStatusChange(source.id, "To verify")}
+                        onClick={() => handleStatusChange(source.id, null)}
                       >
                         <AlertCircle className="h-4 w-4 text-orange-500" />
                         <span>Mark to verify</span>
@@ -182,19 +240,20 @@ export function DataTable() {
                   </div>
                 )}
               </td>
-              <td className="p-4 text-sm">{source.size}</td>
+              <td className="p-4">
+                <div className="text-sm text-gray-600">
+                  {formatSize(source.raw_size_bytes, source.document_count)}
+                </div>
+              </td>
               <td className="p-4">
                 <span className="text-sm truncate max-w-[150px] block">
                   {source.owner}
                 </span>
               </td>
-              <td className="p-4 hover:cursor-pointer">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{formatLastSync(source.lastSync)}</span>
-                  {source.status === "Syncing" && (
-                    <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
-                  )}
-                </div>
+              <td className="p-4">
+                <span className="text-sm">
+                  {formatLastSync(source.updated_at)}
+                </span>
               </td>
             </tr>
           ))}
@@ -236,4 +295,15 @@ export function DataTable() {
       </div>
     </div>
   )
-} 
+}
+
+export const formatBytes = (bytes: number): string => {
+  if (!bytes) return '0 B';
+  
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+};

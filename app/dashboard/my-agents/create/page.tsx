@@ -1,5 +1,5 @@
 "use client"
-import { Box, Typography, Button, TextField, Switch, Select, MenuItem, FormControl, InputLabel, Chip } from '@mui/material'
+import { Box, Typography, Button, TextField, Switch, Select, MenuItem, FormControl, InputLabel, Chip, CircularProgress } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { useState, useEffect } from 'react'
@@ -9,6 +9,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import CheckIcon from '@mui/icons-material/Check'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
+
 const StyledSection = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(4),
   '& .section-title': {
@@ -46,51 +48,15 @@ interface KnowledgeBaseItem {
   selected?: boolean
 }
 
-const knowledgeBaseData: KnowledgeBaseItem[] = [
-  {
-    id: '1',
-    name: 'Internal Documents',
-    type: 'folder',
-    children: [],
-    selected: true
-  },
-  {
-    id: '2',
-    name: 'Meeting Notes',
-    type: 'folder',
-    children: [],
-  },
-  {
-    id: '3',
-    name: 'Product Documents',
-    type: 'folder',
-    children: [],
-  },
-  {
-    id: '4',
-    name: 'Marketing Documents',
-    type: 'folder',
-    children: [],
-  },
-  {
-    id: '5',
-    name: 'Recruiting Documents',
-    type: 'folder',
-    children: [],
-  },
-  {
-    id: '6',
-    name: 'Human Resources Documents',
-    type: 'folder',
-    children: [],
-    selected: true
-  },
-  {
-    id: '7',
-    name: 'Imported Website - 3/22/2024',
-    type: 'file',
-  },
-]
+interface DataSource {
+  id: string;
+  name: string;
+  source_type: string;
+  is_connected: boolean;
+  raw_size_bytes: number;
+  document_count: number;
+  selected?: boolean;
+}
 
 // Add these interfaces at the top with other interfaces
 interface AgentCreateData {
@@ -125,6 +91,9 @@ export default function CreateAgentPage() {
   const [category, setCategory] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
   const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState<string[]>([])
+  const [dataSources, setDataSources] = useState<DataSource[]>([])
+  const [isLoadingDataSources, setIsLoadingDataSources] = useState(true)
+  const [dataSourceError, setDataSourceError] = useState<string | null>(null)
 
   // Load existing agent data on component mount if editing
   useEffect(() => {
@@ -151,6 +120,43 @@ export default function CreateAgentPage() {
         })
     }
   }, [isEditing, agentId, session])
+
+  // Load data sources
+  useEffect(() => {
+    const fetchDataSources = async () => {
+      if (!session?.user?.accessToken) return;
+      
+      try {
+        setIsLoadingDataSources(true);
+        setDataSourceError(null);
+        
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources`, {
+          headers: {
+            'Authorization': `Bearer ${session.user.accessToken}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch data sources');
+        }
+
+        const data = await response.json();
+        // Add selected property to each data source
+        const sourcesWithSelection = data.map((source: DataSource) => ({
+          ...source,
+          selected: selectedKnowledgeBases.includes(source.id)
+        }));
+        setDataSources(sourcesWithSelection);
+      } catch (error) {
+        console.error('Error fetching data sources:', error);
+        setDataSourceError('Failed to load data sources');
+      } finally {
+        setIsLoadingDataSources(false);
+      }
+    };
+
+    fetchDataSources();
+  }, [session, selectedKnowledgeBases]);
 
   const models = [
     { value: 'claude-3.5', label: 'Anthropic Claude-3.5' },
@@ -185,6 +191,18 @@ export default function CreateAgentPage() {
   }
 
   const handleKnowledgeBaseToggle = (id: string) => {
+    console.log('Toggling knowledge base:', id)
+    // Find and log the data source details
+    const source = dataSources.find(ds => ds.id === id)
+    if (source) {
+      console.log('Data source details:', {
+        id: source.id,
+        name: source.name,
+        type: source.source_type,
+        size: formatSize(source.raw_size_bytes, source.document_count),
+        isConnected: source.is_connected
+      })
+    }
     setSelectedKnowledgeBases(prev =>
       prev.includes(id)
         ? prev.filter(item => item !== id)
@@ -198,7 +216,7 @@ export default function CreateAgentPage() {
         ? `${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`
         : `${process.env.NEXT_PUBLIC_API_URL}/agents`
 
-      const agentData = {
+      const agentData: AgentCreateData = {
         name,
         description,
         is_private: isPrivate,
@@ -207,7 +225,7 @@ export default function CreateAgentPage() {
         base_model: baseModel,
         category,
         reference_enabled: referenceEnabled,
-        knowledge_base_ids: selectedKnowledgeBases.map(id => parseInt(id)) // Convert to numbers
+        knowledge_base_ids: selectedKnowledgeBases
       }
 
       const formData = new FormData()
@@ -225,7 +243,11 @@ export default function CreateAgentPage() {
         },
       })
 
-      if (!response.ok) throw new Error('Failed to save agent')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Failed to save agent')
+      }
+
       router.push('/dashboard/my-agents')
     } catch (error) {
       console.error('Error:', error)
@@ -523,26 +545,89 @@ You will help analyze information, and provide advice to boost company revenue."
               p: 2,
               borderBottom: '1px solid',
               borderColor: 'divider',
-              bgcolor: 'background.paper'
+              bgcolor: 'background.paper',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
             }}>
-              <Typography>All files (2)</Typography>
+              <Typography>
+                All files ({dataSources.length})
+              </Typography>
+              {isLoadingDataSources && (
+                <CircularProgress size={20} />
+              )}
             </Box>
 
-            <Box>
-              <Typography variant="h6">Knowledge Bases</Typography>
-              {knowledgeBaseData.map((item) => (
-                <Box key={item.id} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Switch
-                    checked={selectedKnowledgeBases.includes(item.id)}
-                    onChange={() => handleKnowledgeBaseToggle(item.id)}
-                  />
-                  <Typography>{item.name}</Typography>
-                </Box>
-              ))}
-            </Box>
+            {dataSourceError ? (
+              <Box sx={{ p: 2, color: 'error.main' }}>
+                <Typography>{dataSourceError}</Typography>
+              </Box>
+            ) : (
+              <Box sx={{ maxHeight: '400px', overflow: 'auto' }}>
+                {dataSources.map((source) => (
+                  <Box
+                    key={source.id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      p: 2,
+                      gap: 1,
+                      cursor: 'pointer',
+                      borderBottom: '1px solid',
+                      borderColor: 'divider',
+                      '&:hover': {
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                    onClick={() => handleKnowledgeBaseToggle(source.id)}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                      {source.source_type === 'file_upload' ? (
+                        <InsertDriveFileIcon sx={{ color: 'text.secondary' }} />
+                      ) : (
+                        <FolderIcon sx={{ color: 'text.secondary' }} />
+                      )}
+                      <Box>
+                        <Typography>{source.name}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {formatSize(source.raw_size_bytes, source.document_count)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    {source.selected && <CheckIcon sx={{ color: 'primary.main' }} />}
+                  </Box>
+                ))}
+              </Box>
+            )}
           </Box>
         </Box>
       </StyledSection>
     </Box>
   )
 }
+
+// Utility function to format size
+const formatSize = (bytes: number, documentCount: number) => {
+  if (!bytes && !documentCount) return "No data";
+  
+  const parts = [];
+  if (bytes) {
+    parts.push(formatBytes(bytes));
+  }
+  if (documentCount) {
+    parts.push(`${documentCount.toLocaleString()} documents`);
+  }
+  
+  return parts.join(' • ');
+};
+
+const formatBytes = (bytes: number): string => {
+  if (!bytes) return '0 B';
+  
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+};
