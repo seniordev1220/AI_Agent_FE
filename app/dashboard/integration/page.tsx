@@ -22,6 +22,8 @@ import { useState, useEffect } from 'react'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { ChatInterface } from '@/components/ai-agents/chat-interface'
+import { toast } from 'react-hot-toast'
 
 const StyledTab = styled(Tab)({
   textTransform: 'none',
@@ -45,6 +47,16 @@ interface TabPanelProps {
   value: number
 }
 
+interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  welcome_message: string;
+  avatar: string;
+  avatar_base64: string;
+  instructions: string;
+}
+
 export default function IntegrationPage() {
   const searchParams = useSearchParams()
   const agentId = searchParams.get('agentId')
@@ -55,37 +67,45 @@ export default function IntegrationPage() {
   const [greetingMessage, setGreetingMessage] = useState('')
   const [referenceType, setReferenceType] = useState('include')
   const [showCode, setShowCode] = useState(true)
-  const [myAgents, setMyAgents] = useState<any[]>([])
+  const [myAgents, setMyAgents] = useState<Agent[]>([])
   const { data: session } = useSession()
 
   useEffect(() => {
     const fetchAgents = async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
-        headers: {
-          'Authorization': `Bearer ${session?.user?.accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      })
+      if (!session?.user?.accessToken) return;
 
-      if (!response.ok) throw new Error('Failed to fetch agents')
-      const agents = await response.json()
-      setMyAgents(agents)
-      console.log(agents)
-      // If agentId is provided, select that agent
-      if (agentId) {
-        const agent = agents.find((a: any) => a.id === agentId)
-        if (agent) {
-            setSelectedAgent(agent.id)
-            setAgentName(agent.name)
-            setGreetingMessage(agent.welcomeMessage || '')
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+          headers: {
+            'Authorization': `Bearer ${session.user.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch agents');
+        const agents = await response.json();
+        setMyAgents(agents);
+
+        // If agentId is provided, select that agent
+        if (agentId) {
+          const agent = agents.find((a: any) => a.id === agentId);
+          if (agent) {
+            setSelectedAgent(agent.id);
+            setAgentName(agent.name);
+            setGreetingMessage(agent.welcome_message || '');
+            // Store other agent properties as needed
+          }
         }
+      } catch (error) {
+        console.error('Error fetching agents:', error);
+        toast.error('Failed to fetch agents');
       }
-    }
+    };
 
     if (session) {
-      fetchAgents()
+      fetchAgents();
     }
-  }, [agentId, session])
+  }, [agentId, session]);
 
   const handleTabChange = (newValue: string) => {
     setSelectedTab(newValue)
@@ -100,6 +120,15 @@ export default function IntegrationPage() {
     navigator.clipboard.writeText(embedCode)
     // Optionally add a toast notification here
   }
+
+  const handlePreview = () => {
+    // Toggle between code and preview
+    setShowCode(false);
+  };
+
+  const handleShowCode = () => {
+    setShowCode(true);
+  };
 
   function TabPanel(props: TabPanelProps) {
     const { children, value, index, ...other } = props
@@ -329,12 +358,11 @@ export default function IntegrationPage() {
               <Box sx={{ mt: 4 }}>
                 <Box sx={{ 
                   display: 'flex', 
-                  flexDirection: { xs: 'column', md: 'row' },
                   justifyContent: 'space-between', 
-                  alignItems: { xs: 'flex-start', md: 'center' }, 
+                  alignItems: 'center', 
                   mb: 2 
                 }}>
-                  <Typography variant="h6" sx={{ mb: { xs: 1, md: 0 } }}>
+                  <Typography variant="h6">
                     Embed code
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -346,13 +374,12 @@ export default function IntegrationPage() {
                   display: 'flex', 
                   gap: 2, 
                   mb: 2,
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  width: { xs: '100%', sm: 'auto' }
+                  flexDirection: { xs: 'column', sm: 'row' }
                 }}>
                   <Button
                     fullWidth={true}
                     variant={showCode ? "contained" : "outlined"}
-                    onClick={() => setShowCode(true)}
+                    onClick={handleShowCode}
                     sx={{
                       bgcolor: showCode ? '#F3F4F6' : 'transparent',
                       color: 'text.primary',
@@ -369,7 +396,7 @@ export default function IntegrationPage() {
                   <Button
                     fullWidth={true}
                     variant={!showCode ? "contained" : "outlined"}
-                    onClick={() => setShowCode(false)}
+                    onClick={handlePreview}
                     sx={{
                       bgcolor: !showCode ? '#F3F4F6' : 'transparent',
                       color: 'text.primary',
@@ -385,72 +412,67 @@ export default function IntegrationPage() {
                   </Button>
                 </Box>
 
-                <Box
-                  sx={{
-                    position: 'relative',
-                    bgcolor: '#f8f9fa',
-                    borderRadius: 1,
-                    p: { xs: 1.5, sm: 2 },
-                    fontFamily: 'monospace',
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                    lineHeight: '1.5',
-                    overflow: 'auto'
-                  }}
-                >
-                  <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'flex-end', 
-                    mb: 1,
-                    position: 'sticky',
-                    top: 0,
-                    bgcolor: '#f8f9fa',
-                    py: 1
-                  }}>
-                    <Button
-                      startIcon={<ContentCopyIcon />}
-                      onClick={handleCopyCode}
-                      sx={{
-                        color: 'text.secondary',
-                        textTransform: 'none',
-                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                        '&:hover': {
-                          bgcolor: 'transparent',
-                          color: 'text.primary',
-                        },
-                      }}
-                    >
-                      copy
-                    </Button>
-                  </Box>
-                  <Box sx={{ 
-                    display: 'flex',
-                    '& .line-numbers': {
-                      color: 'text.secondary',
-                      mr: 2,
-                      textAlign: 'right',
-                      userSelect: 'none',
-                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
-                    }
-                  }}>
-                    <Box className="line-numbers">
-                      1<br />
-                      2<br />
-                      3<br />
-                      4
-                    </Box>
+                {showCode ? (
+                  // Code view
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      bgcolor: '#f8f9fa',
+                      borderRadius: 1,
+                      p: 2,
+                      fontFamily: 'monospace',
+                      fontSize: '0.875rem',
+                      lineHeight: '1.5',
+                      overflow: 'auto'
+                    }}
+                  >
                     <Box sx={{ 
-                      flex: 1, 
-                      color: 'text.primary',
-                      wordBreak: 'break-all',
-                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                      display: 'flex', 
+                      justifyContent: 'flex-end', 
+                      mb: 1 
                     }}>
-                      {'<iframe'}<br />
-                      {'  src="https://app.finiiteai.com/embed/agent/v1/'}${agentId || 'jogpwrjgw'}?theme=chat"{'}'}<br />
-                      {'  style="border: none; height: 600px; width: 400px"'}<br />
-                      {'/>'}<br />
+                      <Button
+                        startIcon={<ContentCopyIcon />}
+                        onClick={handleCopyCode}
+                        sx={{
+                          color: 'text.secondary',
+                          '&:hover': {
+                            bgcolor: 'transparent',
+                            color: 'text.primary',
+                          },
+                        }}
+                      >
+                        copy
+                      </Button>
                     </Box>
+                    <pre>{embedCode}</pre>
                   </Box>
-                </Box>
+                ) : (
+                  // Preview - Using the same ChatInterface component
+                  <Box sx={{ 
+                    height: '600px', 
+                    width: '400px',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    overflow: 'hidden'
+                  }}>
+                    <ChatInterface
+                      agent={
+                        selectedAgent ? {
+                          id: selectedAgent,
+                          name: agentName || '',
+                          description: myAgents.find(a => a.id === selectedAgent)?.description || '',
+                          welcomeMessage: greetingMessage || '',
+                          avatar_base64: myAgents.find(a => a.id === selectedAgent)?.avatar_base64 || '',
+                          avatar: myAgents.find(a => a.id === selectedAgent)?.avatar || '/agents/code.svg',
+                          instructions: myAgents.find(a => a.id === selectedAgent)?.instructions || ''
+                        } : null
+                      }
+                      isEmbedded={true}
+                    />
+                  </Box>
+                )}
               </Box>
             </Box>
           </Box>
