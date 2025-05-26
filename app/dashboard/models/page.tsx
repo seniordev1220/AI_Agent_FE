@@ -18,7 +18,7 @@ const ModelCard = styled(Card)(({ theme }) => ({
 }))
 
 interface Model {
-  model_name: string
+  ai_model_name: string
   provider: string
   logo_path: string
   is_enabled: boolean
@@ -85,7 +85,7 @@ export default function ModelsPage() {
       // Update the models state
       setModels(prevModels =>
         prevModels.map(model =>
-          model.model_name === modelName
+          model.ai_model_name === modelName
             ? { ...model, is_enabled: updatedModel.is_enabled }
             : model
         )
@@ -93,7 +93,7 @@ export default function ModelsPage() {
 
       setOpenSourcedModels(prevModels =>
         prevModels.map(model =>
-          model.model_name === modelName
+          model.ai_model_name === modelName
             ? { ...model, is_enabled: updatedModel.is_enabled }
             : model
         )
@@ -167,15 +167,15 @@ export default function ModelsPage() {
             {models
               .filter(model => model.is_enabled)
               .map((model) => (
-                <MenuItem key={model.model_name} value={model.model_name}>
+                <MenuItem key={model.ai_model_name} value={model.ai_model_name}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Image
                       src={model.logo_path}
-                      alt={`${model.model_name} logo`}
+                      alt={`${model.ai_model_name} logo`}
                       width={24}
                       height={24}
                     />
-                    {model.model_name}
+                    {model.ai_model_name}
                   </Box>
                 </MenuItem>
               ))}
@@ -185,17 +185,17 @@ export default function ModelsPage() {
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 3, mb: 6 }}>
         {models.map((model) => (
-          <ModelCard key={model.model_name}>
+          <ModelCard key={model.ai_model_name}>
             <Image
               src={model.logo_path}
-              alt={`${model.model_name} logo`}
+              alt={`${model.ai_model_name} logo`}
               width={40}
               height={40}
             />
-            <Typography sx={{ flex: 1 }}>{model.model_name}</Typography>
+            <Typography sx={{ flex: 1 }}>{model.ai_model_name}</Typography>
             <Switch 
               checked={model.is_enabled}
-              onChange={() => handleModelToggle(model.model_name)}
+              onChange={() => handleModelToggle(model.ai_model_name)}
             />
           </ModelCard>
         ))}
@@ -207,17 +207,17 @@ export default function ModelsPage() {
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 3 }}>
         {openSourcedModels.map((model) => (
-          <ModelCard key={model.model_name}>
+          <ModelCard key={model.ai_model_name}>
             <Image
               src={model.logo_path}
-              alt={`${model.model_name} logo`}
+              alt={`${model.ai_model_name} logo`}
               width={40}
               height={40}
             />
-            <Typography sx={{ flex: 1 }}>{model.model_name}</Typography>
+            <Typography sx={{ flex: 1 }}>{model.ai_model_name}</Typography>
             <Switch 
               checked={model.is_enabled}
-              onChange={() => handleModelToggle(model.model_name)}
+              onChange={() => handleModelToggle(model.ai_model_name)}
             />
           </ModelCard>
         ))}

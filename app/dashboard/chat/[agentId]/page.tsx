@@ -4,10 +4,12 @@ import { ModelSelector } from "@/components/ai-agents/model-selector";
 import { MessageInput } from "@/components/ai-agents/message-input";
 import React from "react";
 import { useSession } from "next-auth/react";
+import toast from 'react-hot-toast';
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  model: string;
 }
 
 interface Agent {
@@ -30,7 +32,7 @@ export default function ChatPage({
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo");
+  const [selectedModel, setSelectedModel] = useState<string>("gpt-3.5-turbo");
   const { data: session } = useSession();
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -52,7 +54,7 @@ export default function ChatPage({
       try {
         // Fetch agent from API
         const agentResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/agents`,
+          `${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`,
           {
             headers: {
               Authorization: `Bearer ${session.user.accessToken}`,
@@ -61,16 +63,10 @@ export default function ChatPage({
         );
 
         if (!agentResponse.ok) {
-          throw new Error("Failed to fetch agents");
+          throw new Error("Failed to fetch agent");
         }
 
-        const storedAgents = await agentResponse.json();
-        const currentAgent = storedAgents.find((a: Agent) => a.id.toString() === agentId);
-        
-        if (!currentAgent) {
-          throw new Error("Agent not found");
-        }
-        console.log(currentAgent);
+        const currentAgent = await agentResponse.json();
         setAgent(currentAgent);
 
         // Fetch chat history from API
@@ -118,74 +114,62 @@ export default function ChatPage({
 
   const handleSendMessage = async (message: string) => {
     if (!agent || !session) return;
-
-    const newMessage: ChatMessage = { role: "user", content: message };
+    console.log("test-----", message, selectedModel);
+    const newMessage: ChatMessage = { 
+      role: "user", 
+      content: message,
+      model: selectedModel
+    };
     const updatedHistory = [...chatHistory, newMessage];
     setChatHistory(updatedHistory);
 
     try {
-      // Save user message to API
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/${agentId}/messages`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.user.accessToken}`,
-        },
-        body: JSON.stringify(newMessage),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/chat/${agentId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.user.accessToken}`,
+          },
+          body: JSON.stringify({
+            content: message,
+            model: selectedModel
+          }),
+        }
+      );
 
-      // Get AI response
-      const aiResponse = await fetch("/api/openai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.user.accessToken}`,
-        },
-        body: JSON.stringify({
-          messages: [
-            ...chatHistory.map((msg) => ({
-              role: msg.role,
-              content: msg.content,
-            })),
-            { role: "user", content: message },
-          ],
-          instruction: agent.instruction,
-        }),
-      });
-
-      const data = await aiResponse.json();
-      if (!aiResponse.ok) {
+      if (!response.ok) {
+        const errorData = await response.json();
         throw new Error(
-          data.error?.message ||
-            data.error ||
-            "Failed to get a response from the server."
+          errorData.detail || "Failed to get a response from the server."
         );
       }
 
-      const assistantMessage: ChatMessage = {
-        role: "assistant",
-        content: data.response,
-      };
+      const assistantMessage = await response.json();
+      setChatHistory([...updatedHistory, {
+        ...assistantMessage,
+        model: selectedModel
+      }]);
 
-      // Save assistant message to API
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/${agentId}/messages`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.user.accessToken}`,
-        },
-        body: JSON.stringify(assistantMessage),
-      });
+      toast.success('Message sent successfully');
 
-      setChatHistory([...updatedHistory, assistantMessage]);
     } catch (error) {
       console.error("Error in chat completion:", error);
       const errorMessage: ChatMessage = {
         role: "assistant",
         content: "An error occurred while processing your request. Please try again later.",
+        model: selectedModel
       };
       setChatHistory([...updatedHistory, errorMessage]);
+      
+      toast.error(error instanceof Error ? error.message : 'Failed to send message');
     }
+  };
+
+  const handleModelChange = (model: string) => {
+    console.log("Model changed to:", model);
+    setSelectedModel(model);
   };
 
   return (
@@ -195,7 +179,7 @@ export default function ChatPage({
           <div className="max-w-[200px]">
             <ModelSelector 
               value={selectedModel}
-              onChange={(model) => setSelectedModel(model)}
+              onChange={handleModelChange}
             />
           </div>
         </div>
@@ -235,7 +219,7 @@ export default function ChatPage({
             ) : (
               <div key={index} className="flex gap-4 max-w-[80%]">
                 <img
-                  src={agent?.avatar || "/agents/code.svg"}
+                  src={`data:image/png;base64,${agent?.avatar_base64}` || "/agents/code.svg"}
                   alt={agent?.name || "AI Agent"}
                   className="w-12 h-12 rounded-full"
                 />
@@ -246,6 +230,9 @@ export default function ChatPage({
                       className="space-y-4 whitespace-pre-wrap prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
                       dangerouslySetInnerHTML={{ __html: msg.content }}
                     />
+                    <div className="text-xs text-gray-500 mt-2">
+                      Model: {msg.model}
+                    </div>
                   </div>
                   <div className="flex justify-end mt-2 ml-auto">
                     <button
