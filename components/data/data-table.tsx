@@ -6,16 +6,23 @@ import { format, formatDistanceToNow } from 'date-fns'
 import { useSession } from "next-auth/react"
 import { formatBytes } from "@/lib/utils"
 
+interface User {
+  id: string;
+  first_name: string;
+  last_name: string;
+}
+
 interface DataSource {
-  id: string
-  name: string
-  source_type: string
-  is_connected: boolean
-  created_at: string
-  updated_at: string
-  owner: string
-  raw_size_bytes: number
-  document_count: number
+  id: string;
+  name: string;
+  source_type: string;
+  is_connected: boolean;
+  created_at: string;
+  updated_at: string;
+  owner: string;
+  user_id: string;
+  raw_size_bytes: number;
+  document_count: number;
 }
 
 const formatSize = (bytes: number, documentCount: number) => {
@@ -38,17 +45,15 @@ export function DataTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
   const { data: session } = useSession()
+  const [users, setUsers] = useState<{ [key: string]: User }>({});
 
   const loadDataSources = async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/data_knowledge/`,
-        {
-          headers: {
-            Authorization: `Bearer ${session?.user?.accessToken}`,
-          },
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources`, {
+        headers: {
+          'Authorization': `Bearer ${session?.user?.accessToken}`
         }
-      );
+      });
       
       if (!response.ok) throw new Error('Failed to fetch data sources');
       
@@ -56,6 +61,29 @@ export function DataTable() {
       setDataSources(sources);
     } catch (error) {
       console.error('Error loading data sources:', error);
+    }
+  };
+
+  const loadUsers = async (userIds: string[]) => {
+    try {
+      const uniqueIds = [...new Set(userIds)];
+      const promises = uniqueIds.map(id =>
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${session?.user?.accessToken}`
+          }
+        }).then(res => res.json())
+      );
+      
+      const usersData = await Promise.all(promises);
+      const usersMap = usersData.reduce((acc, user) => {
+        acc[user.id] = user;
+        return acc;
+      }, {});
+      
+      setUsers(usersMap);
+    } catch (error) {
+      console.error('Error loading users:', error);
     }
   };
 
@@ -111,6 +139,13 @@ export function DataTable() {
     };
   }, [session]);
 
+  useEffect(() => {
+    if (dataSources.length > 0 && session?.user?.accessToken) {
+      const userIds = dataSources.map(source => source.user_id);
+      loadUsers(userIds);
+    }
+  }, [dataSources, session]);
+
   // Function to format the lastSync timestamp
   const formatLastSync = (timestamp: string) => {
     try {
@@ -132,11 +167,11 @@ export function DataTable() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentItems = dataSources.slice(startIndex, endIndex);
-
+  console.log("&&&&",currentItems)
   const handleStatusChange = async (sourceId: string, isConnected: boolean | null) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/knowledge_base/${sourceId}`, {
-        method: 'PUT',
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/${sourceId}/connection-test`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.user?.accessToken}`
@@ -173,6 +208,12 @@ export function DataTable() {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
+  };
+
+  const getFullName = (userId: string) => {
+    const user = users[userId];
+    if (!user) return "Loading...";
+    return `${user.first_name} ${user.last_name}`.trim() || "Unknown";
   };
 
   return (
@@ -250,7 +291,7 @@ export function DataTable() {
               </td>
               <td className="p-4">
                 <span className="text-sm truncate max-w-[150px] block">
-                  {source.owner}
+                  {getFullName(source.user_id)}
                 </span>
               </td>
               <td className="p-4">

@@ -3,7 +3,7 @@ import { useSession } from 'next-auth/react'
 import { Send } from 'lucide-react'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
-import { ModelSelector } from './model-selector'
+import { ModelSelector } from '@/components/ai-agents/model-selector'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -35,7 +35,7 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
 
   useEffect(() => {
     // Add welcome message if provided
-    console.log(agent)
+    console.log(agent, isEmbedded)
     if (agent?.welcomeMessage) {
       setMessages([{ role: 'assistant', content: agent.welcomeMessage }])
     }
@@ -77,21 +77,23 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
       })
 
       if (!response.ok) {
-        throw new Error('Failed to send message')
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response:', errorData);
+        throw new Error(`Failed to send message: ${response.status}`);
       }
 
-      const assistantMessage = await response.json()
-      setMessages(prev => [...prev, {
-        ...assistantMessage,
-        model: selectedModel
-      }])
-      toast.success('Message sent successfully')
-    } catch (error) {
-      console.error('Error:', error)
-      toast.error('Failed to send message')
+      const data = await response.json()
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, there was an error processing your request.',
+        content: data.message || data.content,
+        model: selectedModel
+      }])
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Failed to send message. Please try again.');
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, there was an error processing your request. Please try again.',
         model: selectedModel
       }])
     } finally {
@@ -106,38 +108,40 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b">
-        <Image
-          src={agent?.avatar_base64 ? `data:image/png;base64,${agent.avatar_base64}` : (agent?.avatar || "/agents/code.svg")}
-          alt={agent?.name || "AI Agent"}
-          width={40}
-          height={40}
-          className="rounded-full"
-        />
-        <div>
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 relative">
+            <Image
+              src={agent?.avatar_base64 ? `data:image/png;base64,${agent.avatar_base64}` : (agent?.avatar || "/agents/code.svg")}
+              alt={agent?.name || "AI Agent"}
+              fill
+              className="rounded-full object-cover"
+            />
+          </div>
           <h2 className="font-medium">{agent?.name || "AI Agent"}</h2>
-          {!isEmbedded && (
-            <div className="mt-1">
-              <ModelSelector
-                value={selectedModel}
-                onChange={handleModelChange}
-              />
-            </div>
-          )}
         </div>
+        {isEmbedded && (
+          <div className="flex items-center">
+            <ModelSelector
+              value={selectedModel}
+              onChange={handleModelChange}
+            />
+          </div>
+        )}
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Agent Info Section */}
         <div className="flex flex-col items-center justify-center mb-8">
-          <Image
-            src={agent?.avatar_base64 ? `data:image/png;base64,${agent.avatar_base64}` : (agent?.avatar || "/agents/code.svg")}
-            alt={agent?.name || "AI Agent"}
-            width={96}
-            height={96}
-            className="rounded-full mb-4"
-          />
+          <div className="w-24 h-24 relative mb-4">
+            <Image
+              src={agent?.avatar_base64 ? `data:image/png;base64,${agent.avatar_base64}` : (agent?.avatar || "/agents/code.svg")}
+              alt={agent?.name || "AI Agent"}
+              fill
+              className="rounded-full object-cover"
+            />
+          </div>
           <h2 className="text-xl font-semibold mb-2">
             {agent?.name || "AI Agent"}
           </h2>
@@ -156,24 +160,22 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {message.role === 'user' ? (
-              <div className="self-end bg-gray-100 p-4 rounded-2xl max-w-[80%]">
-                <div
-                  className="text-gray-800 prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
-                  dangerouslySetInnerHTML={{ __html: message.content }}
-                />
+              <div className="bg-gray-100 p-4 rounded-2xl max-w-[80%]">
+                <p className="text-gray-800">{message.content}</p>
                 <div className="text-xs text-gray-500 mt-2">
                   Model: {message.model}
                 </div>
               </div>
             ) : (
               <div className="flex gap-4 max-w-[80%]">
-                <Image
-                  src={agent?.avatar_base64 ? `data:image/png;base64,${agent.avatar_base64}` : (agent?.avatar || "/agents/code.svg")}
-                  alt={agent?.name || "AI Agent"}
-                  width={48}
-                  height={48}
-                  className="rounded-full"
-                />
+                <div className="w-12 h-12 relative flex-shrink-0">
+                  <Image
+                    src={agent?.avatar_base64 ? `data:image/png;base64,${agent.avatar_base64}` : (agent?.avatar || "/agents/code.svg")}
+                    alt={agent?.name || "AI Agent"}
+                    fill
+                    className="rounded-full object-cover"
+                  />
+                </div>
                 <div>
                   <p className="font-medium mb-2">{agent?.name || "AI Agent"}</p>
                   <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm">

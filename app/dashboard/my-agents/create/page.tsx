@@ -130,7 +130,7 @@ export default function CreateAgentPage() {
         setIsLoadingDataSources(true);
         setDataSourceError(null);
         
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/knowledge_base`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources`, {
           headers: {
             'Authorization': `Bearer ${session.user.accessToken}`
           }
@@ -530,77 +530,79 @@ You will help analyze information, and provide advice to boost company revenue."
           />
         </Box>
 
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Select your agent's knowledge base
-          </Typography>
+        {referenceEnabled && (
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Select your agent's knowledge base
+            </Typography>
 
-          <Box sx={{
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: 1,
-            overflow: 'hidden'
-          }}>
             <Box sx={{
-              p: 2,
-              borderBottom: '1px solid',
+              border: '1px solid',
               borderColor: 'divider',
-              bgcolor: 'background.paper',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              borderRadius: 1,
+              overflow: 'hidden'
             }}>
-              <Typography>
-                All files ({dataSources.length})
-              </Typography>
-              {isLoadingDataSources && (
-                <CircularProgress size={20} />
+              <Box sx={{
+                p: 2,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+                bgcolor: 'background.paper',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <Typography>
+                  All files ({dataSources.length})
+                </Typography>
+                {isLoadingDataSources && (
+                  <CircularProgress size={20} />
+                )}
+              </Box>
+
+              {dataSourceError ? (
+                <Box sx={{ p: 2, color: 'error.main' }}>
+                  <Typography>{dataSourceError}</Typography>
+                </Box>
+              ) : (
+                <Box sx={{ maxHeight: '400px', overflow: 'auto' }}>
+                  {dataSources.map((source) => (
+                    <Box
+                      key={source.id}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        p: 2,
+                        gap: 1,
+                        cursor: 'pointer',
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        '&:hover': {
+                          bgcolor: 'action.hover',
+                        },
+                      }}
+                      onClick={() => handleKnowledgeBaseToggle(source.id)}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                        {source.source_type === 'file_upload' ? (
+                          <InsertDriveFileIcon sx={{ color: 'text.secondary' }} />
+                        ) : (
+                          <FolderIcon sx={{ color: 'text.secondary' }} />
+                        )}
+                        <Box>
+                          <Typography>{source.name}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {formatSize(source.raw_size_bytes, source.document_count)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      {source.selected && <CheckIcon sx={{ color: 'primary.main' }} />}
+                    </Box>
+                  ))}
+                </Box>
               )}
             </Box>
-
-            {dataSourceError ? (
-              <Box sx={{ p: 2, color: 'error.main' }}>
-                <Typography>{dataSourceError}</Typography>
-              </Box>
-            ) : (
-              <Box sx={{ maxHeight: '400px', overflow: 'auto' }}>
-                {dataSources.map((source) => (
-                  <Box
-                    key={source.id}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      p: 2,
-                      gap: 1,
-                      cursor: 'pointer',
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                    onClick={() => handleKnowledgeBaseToggle(source.id)}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-                      {source.source_type === 'file_upload' ? (
-                        <InsertDriveFileIcon sx={{ color: 'text.secondary' }} />
-                      ) : (
-                        <FolderIcon sx={{ color: 'text.secondary' }} />
-                      )}
-                      <Box>
-                        <Typography>{source.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {formatSize(source.raw_size_bytes, source.document_count)}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    {source.selected && <CheckIcon sx={{ color: 'primary.main' }} />}
-                  </Box>
-                ))}
-              </Box>
-            )}
           </Box>
-        </Box>
+        )}
       </StyledSection>
     </Box>
   )

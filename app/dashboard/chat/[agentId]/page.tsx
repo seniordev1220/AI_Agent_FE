@@ -116,11 +116,11 @@ export default function ChatPage({
     if (!agent || !session) return;
     
     // Remove HTML tags from the message
-    // const strippedMessage = message.replace(/<[^>]*>/g, '');
+    const strippedMessage = message.replace(/<[^>]*>/g, '');
     
     const newMessage: ChatMessage = { 
       role: "user", 
-      content: message,
+      content: strippedMessage,
       model: selectedModel
     };
     const updatedHistory = [...chatHistory, newMessage];
@@ -136,7 +136,7 @@ export default function ChatPage({
             Authorization: `Bearer ${session.user.accessToken}`,
           },
           body: JSON.stringify({
-            content: message,
+            content: strippedMessage,
             model: selectedModel
           }),
         }

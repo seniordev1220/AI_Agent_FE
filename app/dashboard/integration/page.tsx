@@ -483,7 +483,7 @@ export default function IntegrationPage() {
             </Typography>
             <TextField
               fullWidth
-              value="api.finiiteai.com/njofpweewn"
+              value="app.finiite.com/demo/api"
               InputProps={{
                 readOnly: true,
                 sx: {
