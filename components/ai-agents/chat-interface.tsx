@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { Send } from 'lucide-react'
+import { Send, Upload } from 'lucide-react'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { ModelSelector } from '@/components/ai-agents/model-selector'
@@ -32,6 +32,9 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [selectedModel, setSelectedModel] = useState<string>("gpt-3.5-turbo")
+  const [showUpload, setShowUpload] = useState(false)
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     // Add welcome message if provided
@@ -104,6 +107,43 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
   const handleModelChange = (model: string) => {
     setSelectedModel(model)
   }
+
+  const handleFileUpload = async (file: File) => {
+    if (!agent || !session) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/agents/${agent.id}/knowledge-bases/upload`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.user.accessToken}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response:', errorData);
+        throw new Error(errorData.detail || 'Failed to upload file');
+      }
+
+      const data = await response.json();
+      toast.success('File uploaded successfully');
+      setUploadedFile(file);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload file');
+    }
+  };
+
+  const handleUpdateKnowledge = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -187,12 +227,16 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
                       Model: {message.model}
                     </div>
                   </div>
-                  <div className="flex justify-end mt-2 ml-auto">
+                  <div className="flex justify-end mt-2">
+                    {uploadedFile && (
+                      <div className="flex items-center gap-2 mr-2 text-sm text-gray-600">
+                        <Upload className="w-4 h-4" />
+                        {uploadedFile.name}
+                      </div>
+                    )}
                     <button
                       className="px-4 py-2 bg-[#9FB5F1] text-white rounded-md hover:bg-[#8CA1E0] transition-colors text-sm"
-                      onClick={() => {
-                        console.log("Update knowledge base clicked");
-                      }}
+                      onClick={handleUpdateKnowledge}
                     >
                       Update knowledge base
                     </button>
@@ -225,6 +269,20 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
           </button>
         </div>
       </form>
+
+      {/* Add hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            handleFileUpload(file);
+          }
+        }}
+        accept=".txt,.pdf,.doc,.docx"  // Add more file types as needed
+      />
     </div>
   )
 } 

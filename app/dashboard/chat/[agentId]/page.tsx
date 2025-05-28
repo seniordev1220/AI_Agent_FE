@@ -5,6 +5,7 @@ import { MessageInput } from "@/components/ai-agents/message-input";
 import React from "react";
 import { useSession } from "next-auth/react";
 import toast from 'react-hot-toast';
+import { Upload } from 'lucide-react';
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -35,6 +36,8 @@ export default function ChatPage({
   const [selectedModel, setSelectedModel] = useState<string>("gpt-3.5-turbo");
   const { data: session } = useSession();
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Resolve the params Promise and set the agentId
   useEffect(() => {
@@ -175,6 +178,43 @@ export default function ChatPage({
     setSelectedModel(model);
   };
 
+  const handleFileUpload = async (file: File) => {
+    if (!agentId || !session) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}/knowledge-bases/upload`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.user.accessToken}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response:', errorData);
+        throw new Error(errorData.detail || 'Failed to upload file');
+      }
+
+      const data = await response.json();
+      toast.success('File uploaded successfully');
+      setUploadedFile(file);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload file');
+    }
+  };
+
+  const handleUpdateKnowledge = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="h-[87vh] flex overflow-hidden">
       <div className="flex-1 flex flex-col bg-white overflow-hidden">
@@ -217,6 +257,9 @@ export default function ChatPage({
                 <div className="text-gray-800">
                   {msg.content}
                 </div>
+                <div className="text-xs text-gray-500 mt-2">
+                  Model: {msg.model}
+                </div>
               </div>
             ) : (
               <div key={index} className="flex gap-4 max-w-[80%]">
@@ -236,12 +279,16 @@ export default function ChatPage({
                       Model: {msg.model}
                     </div>
                   </div>
-                  <div className="flex justify-end mt-2 ml-auto">
+                  <div className="flex justify-end mt-2">
+                    {uploadedFile && (
+                      <div className="flex items-center gap-2 mr-2 text-sm text-gray-600">
+                        <Upload className="w-4 h-4" />
+                        {uploadedFile.name}
+                      </div>
+                    )}
                     <button
                       className="px-4 py-2 bg-[#9FB5F1] text-white rounded-md hover:bg-[#8CA1E0] transition-colors text-sm"
-                      onClick={() => {
-                        console.log("Update knowledge base clicked");
-                      }}
+                      onClick={handleUpdateKnowledge}
                     >
                       Update knowledge base
                     </button>
@@ -260,6 +307,19 @@ export default function ChatPage({
           </div>
         </div>
       </div>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            handleFileUpload(file);
+          }
+        }}
+        accept=".txt,.pdf,.doc,.docx"
+      />
     </div>
   );
 }
