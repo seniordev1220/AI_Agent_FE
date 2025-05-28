@@ -130,7 +130,7 @@ export default function CreateAgentPage() {
         setIsLoadingDataSources(true);
         setDataSourceError(null);
         
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/knowledge_base`, {
           headers: {
             'Authorization': `Bearer ${session.user.accessToken}`
           }

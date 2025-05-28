@@ -263,7 +263,7 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
             const fileFormData = new FormData();
             fileFormData.append('file', file);
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/upload`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/knowledge_base/upload`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${session?.user?.accessToken}`
@@ -350,7 +350,7 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
         }
 
         // Make API request to create data source
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/knowledge_base`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -114,7 +114,10 @@ export default function ChatPage({
 
   const handleSendMessage = async (message: string) => {
     if (!agent || !session) return;
-    console.log("test-----", message, selectedModel);
+    
+    // Remove HTML tags from the message
+    // const strippedMessage = message.replace(/<[^>]*>/g, '');
+    
     const newMessage: ChatMessage = { 
       role: "user", 
       content: message,
@@ -211,10 +214,9 @@ export default function ChatPage({
                 key={index}
                 className="self-end bg-gray-100 p-4 rounded-2xl max-w-[80%]"
               >
-                <div
-                  className="text-gray-800 prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
-                  dangerouslySetInnerHTML={{ __html: msg.content }}
-                />
+                <div className="text-gray-800">
+                  {msg.content}
+                </div>
               </div>
             ) : (
               <div key={index} className="flex gap-4 max-w-[80%]">

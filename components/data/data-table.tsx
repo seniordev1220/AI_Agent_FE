@@ -41,11 +41,14 @@ export function DataTable() {
 
   const loadDataSources = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources`, {
-        headers: {
-          'Authorization': `Bearer ${session?.user?.accessToken}`
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/data_knowledge/`,
+        {
+          headers: {
+            Authorization: `Bearer ${session?.user?.accessToken}`,
+          },
         }
-      });
+      );
       
       if (!response.ok) throw new Error('Failed to fetch data sources');
       
@@ -132,7 +135,7 @@ export function DataTable() {
 
   const handleStatusChange = async (sourceId: string, isConnected: boolean | null) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/${sourceId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/knowledge_base/${sourceId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
