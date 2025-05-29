@@ -186,7 +186,7 @@ export default function ChatPage({
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}/knowledge-bases/upload`,
+        `${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}/knowledge-bases`,
         {
           method: 'POST',
           headers: {

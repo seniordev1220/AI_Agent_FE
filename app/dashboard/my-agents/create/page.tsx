@@ -71,6 +71,14 @@ interface AgentCreateData {
   knowledge_base_ids?: string[];
 }
 
+// Add this interface
+interface ModelSetting {
+  id: string;
+  name: string;
+  model_id: string;
+  is_enabled: boolean;
+}
+
 export default function CreateAgentPage() {
   // Get the agent ID from the URL query params if we're editing
   const searchParams = useSearchParams()
@@ -94,6 +102,10 @@ export default function CreateAgentPage() {
   const [dataSources, setDataSources] = useState<DataSource[]>([])
   const [isLoadingDataSources, setIsLoadingDataSources] = useState(true)
   const [dataSourceError, setDataSourceError] = useState<string | null>(null)
+
+  // Add new state for models
+  const [availableModels, setAvailableModels] = useState<ModelSetting[]>([])
+  const [isLoadingModels, setIsLoadingModels] = useState(true)
 
   // Load existing agent data on component mount if editing
   useEffect(() => {
@@ -158,19 +170,36 @@ export default function CreateAgentPage() {
     fetchDataSources();
   }, [session, selectedKnowledgeBases]);
 
-  const models = [
-    { value: 'claude-3.5', label: 'Anthropic Claude-3.5' },
-    { value: 'claude-3.7', label: 'Anthropic Claude-3.7' },
-    { value: 'gpt4', label: 'GPT-4' },
-    { value: 'gpt4o', label: 'GPT-4o' },
-    { value: 'o1-mini', label: 'GPT O1-mini' },
-    { value: 'gemini', label: 'Google Gemini' },
-    { value: 'mistral', label: 'Mistral' },
-    { value: 'deepseek', label: 'DeepSeek' },
-    { value: 'perplexity', label: 'Perplexity AI' },
-    { value: 'meta', label: 'Meta: llama. 3.2 1B' },
-    { value: 'huggingface', label: 'Hugging Face' },
-  ]
+  // Add this effect to fetch models
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (!session?.user?.accessToken) return;
+      
+      try {
+        setIsLoadingModels(true);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/models`, {
+          headers: {
+            'Authorization': `Bearer ${session.user.accessToken}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch models');
+        }
+
+        const data = await response.json();
+        // Ensure data is an array before filtering
+        const modelArray = Array.isArray(data) ? data : data.models || [];
+        setAvailableModels(modelArray.filter((model: ModelSetting) => model.is_enabled));
+      } catch (error) {
+        console.error('Error fetching models:', error);
+      } finally {
+        setIsLoadingModels(false);
+      }
+    };
+
+    fetchModels();
+  }, [session]);
 
   const availableCategories = [
     "Sales",
@@ -472,11 +501,15 @@ You will help analyze information, and provide advice to boost company revenue."
             onChange={(e) => setBaseModel(e.target.value)}
             label="Base Model"
           >
-            {models.map((model) => (
-              <MenuItem key={model.value} value={model.value}>
-                {model.label}
-              </MenuItem>
-            ))}
+            {isLoadingModels ? (
+              <MenuItem disabled>Loading models...</MenuItem>
+            ) : (
+              availableModels.map((model) => (
+                <MenuItem key={model.id} value={model.model_id}>
+                  {model.ai_model_name}
+                </MenuItem>
+              ))
+            )}
           </Select>
         </FormControl>
       </StyledSection>
