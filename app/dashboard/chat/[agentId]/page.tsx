@@ -19,6 +19,7 @@ interface ChatMessage {
     url: string;
     size: number;
   }[];
+  isGeneratedImage?: boolean;
 }
 
 interface Agent {
@@ -124,31 +125,33 @@ export default function ChatPage({
   }, [chatHistory]);
 
   const handleSendMessage = async (message: string, files?: File[]) => {
-    console.log('Received files in page:', files);
-    
     if (!agent || !session) return;
     
-    // Remove HTML tags from the message
+    // Check if the message contains an image tag
+    const containsGeneratedImage = /<img.*?src="(.*?)".*?>/i.test(message);
+    
+    // Remove HTML tags from the message for API sending
     const strippedMessage = message.replace(/<[^>]*>/g, '');
     
     const formData = new FormData();
     formData.append('content', strippedMessage);
     formData.append('model', selectedModel);
     
-    // Add files to FormData if they exist
     if (files && files.length > 0) {
-      files.forEach((file, index) => {
-        formData.append(`files`, file);  // Changed from 'file' to 'files'
+      files.forEach((file) => {
+        formData.append('files', file);
       });
     }
 
     const newMessage: ChatMessage = { 
       role: "user", 
-      content: strippedMessage,
+      content: message, // Keep the original message with HTML for display
       model: selectedModel,
-      files: files || [],  // Make sure to include files in the chat message
-      attachments: []  // Initialize attachments as an empty array
+      files: files || [],
+      attachments: [],
+      isGeneratedImage: containsGeneratedImage
     };
+    
     const updatedHistory = [...chatHistory, newMessage];
     setChatHistory(updatedHistory);
 
@@ -278,10 +281,21 @@ export default function ChatPage({
                 key={index}
                 className="self-end bg-gray-100 p-4 rounded-2xl max-w-[80%]"
               >
-                <div className="text-gray-800">
-                  {msg.content}
-                </div>
-                {(msg.files?.length > 0 || msg.attachments?.length > 0) && (
+                {msg.isGeneratedImage ? (
+                  // If it's a generated image, render the content with HTML
+                  <div 
+                    className="text-gray-800"
+                    dangerouslySetInnerHTML={{ __html: msg.content }}
+                  />
+                ) : (
+                  // Otherwise, render the plain text content
+                  <div className="text-gray-800">
+                    {msg.content}
+                  </div>
+                )}
+                
+                {/* Show files and attachments */}
+                {((msg.files && msg.files.length > 0) || (msg.attachments && msg.attachments.length > 0)) && (
                   <div className="mt-2 space-y-1">
                     {msg.files?.map((file, i) => (
                       <div key={`file-${i}`} className="flex items-center text-sm text-gray-500">
