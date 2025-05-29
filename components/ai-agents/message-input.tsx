@@ -226,7 +226,7 @@ export function MessageInput({ onSend }: MessageInputProps) {
     if (generatedImage && editor) {
       // Insert the image with specific styling
       const imageHtml = `<img src="${generatedImage}" alt="${imagePrompt}" style="max-width: 100%; border-radius: 8px; margin: 8px 0;" />`;
-      
+      console.log('Inserting image:', generatedImage);
       // If there's existing content, add a line break before the image
       const currentContent = editor.getHTML().trim();
       const newContent = currentContent 
@@ -362,12 +362,6 @@ export function MessageInput({ onSend }: MessageInputProps) {
                   className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"
                 >
                   <Plus className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"
-                >
-                  <FileCode className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
