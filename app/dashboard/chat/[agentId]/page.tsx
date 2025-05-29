@@ -5,12 +5,20 @@ import { MessageInput } from "@/components/ai-agents/message-input";
 import React from "react";
 import { useSession } from "next-auth/react";
 import toast from 'react-hot-toast';
-import { Upload } from 'lucide-react';
+import { Paperclip, Upload } from 'lucide-react';
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   model: string;
+  files?: File[];
+  attachments?: {
+    id: number;
+    name: string;
+    type: string;
+    url: string;
+    size: number;
+  }[];
 }
 
 interface Agent {
@@ -115,16 +123,31 @@ export default function ChatPage({
     return () => clearTimeout(timeoutId);
   }, [chatHistory]);
 
-  const handleSendMessage = async (message: string) => {
+  const handleSendMessage = async (message: string, files?: File[]) => {
+    console.log('Received files in page:', files);
+    
     if (!agent || !session) return;
     
     // Remove HTML tags from the message
     const strippedMessage = message.replace(/<[^>]*>/g, '');
     
+    const formData = new FormData();
+    formData.append('content', strippedMessage);
+    formData.append('model', selectedModel);
+    
+    // Add files to FormData if they exist
+    if (files && files.length > 0) {
+      files.forEach((file, index) => {
+        formData.append(`files`, file);  // Changed from 'file' to 'files'
+      });
+    }
+
     const newMessage: ChatMessage = { 
       role: "user", 
       content: strippedMessage,
-      model: selectedModel
+      model: selectedModel,
+      files: files || [],  // Make sure to include files in the chat message
+      attachments: []  // Initialize attachments as an empty array
     };
     const updatedHistory = [...chatHistory, newMessage];
     setChatHistory(updatedHistory);
@@ -135,13 +158,9 @@ export default function ChatPage({
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${session.user.accessToken}`,
           },
-          body: JSON.stringify({
-            content: strippedMessage,
-            model: selectedModel
-          }),
+          body: formData,  // Use FormData instead of JSON
         }
       );
 
@@ -158,6 +177,11 @@ export default function ChatPage({
         model: selectedModel
       }]);
 
+      console.log("Files being sent:", files);
+      console.log("FormData entries:");
+      for (const [key, value] of formData.entries()) {
+        console.log(key, value);
+      }
       toast.success('Message sent successfully');
 
     } catch (error) {
@@ -257,6 +281,35 @@ export default function ChatPage({
                 <div className="text-gray-800">
                   {msg.content}
                 </div>
+                {(msg.files?.length > 0 || msg.attachments?.length > 0) && (
+                  <div className="mt-2 space-y-1">
+                    {msg.files?.map((file, i) => (
+                      <div key={`file-${i}`} className="flex items-center text-sm text-gray-500">
+                        <Paperclip className="h-3 w-3 mr-1" />
+                        {file.name}
+                      </div>
+                    ))}
+                    {msg.attachments?.map((attachment) => (
+                      <div 
+                        key={`attachment-${attachment.id}`} 
+                        className="flex items-center text-sm text-gray-500"
+                      >
+                        <Paperclip className="h-3 w-3 mr-1" />
+                        <a 
+                          href={attachment.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          {attachment.name}
+                          <span className="text-xs ml-1 text-gray-400">
+                            ({(attachment.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="text-xs text-gray-500 mt-2">
                   Model: {msg.model}
                 </div>
@@ -275,6 +328,29 @@ export default function ChatPage({
                       className="space-y-4 whitespace-pre-wrap prose prose-img:my-0 prose-img:max-w-full prose-img:rounded-lg"
                       dangerouslySetInnerHTML={{ __html: msg.content }}
                     />
+                    {msg.attachments && msg.attachments.length > 0 && (
+                      <div className="mt-4 space-y-1">
+                        {msg.attachments.map((attachment) => (
+                          <div 
+                            key={`attachment-${attachment.id}`}
+                            className="flex items-center text-sm text-gray-500"
+                          >
+                            <Paperclip className="h-3 w-3 mr-1" />
+                            <a 
+                              href={attachment.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {attachment.name}
+                              <span className="text-xs ml-1 text-gray-400">
+                                ({(attachment.size / 1024).toFixed(1)} KB)
+                              </span>
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div className="text-xs text-gray-500 mt-2">
                       Model: {msg.model}
                     </div>

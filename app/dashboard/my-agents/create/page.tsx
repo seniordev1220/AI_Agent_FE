@@ -74,7 +74,7 @@ interface AgentCreateData {
 // Add this interface
 interface ModelSetting {
   id: string;
-  name: string;
+  ai_model_name: string;
   model_id: string;
   is_enabled: boolean;
 }
@@ -190,6 +190,7 @@ export default function CreateAgentPage() {
         const data = await response.json();
         // Ensure data is an array before filtering
         const modelArray = Array.isArray(data) ? data : data.models || [];
+        console.log('Model array:', modelArray);
         setAvailableModels(modelArray.filter((model: ModelSetting) => model.is_enabled));
       } catch (error) {
         console.error('Error fetching models:', error);
@@ -505,7 +506,7 @@ You will help analyze information, and provide advice to boost company revenue."
               <MenuItem disabled>Loading models...</MenuItem>
             ) : (
               availableModels.map((model) => (
-                <MenuItem key={model.id} value={model.model_id}>
+                <MenuItem key={model.id} value={model.ai_model_name}>
                   {model.ai_model_name}
                 </MenuItem>
               ))

@@ -1,5 +1,5 @@
 "use client";
-import { Plus, FileCode, Image as ImageIcon, ArrowRight, Bold, Italic, Code, X } from "lucide-react";
+import { Plus, FileCode, Image as ImageIcon, ArrowRight, Bold, Italic, Code, X, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -23,8 +23,7 @@ import Avatar from '@mui/material/Avatar';
 import ListItemAvatar from '@mui/material/ListItemAvatar';
 
 interface MessageInputProps {
-  onSend?: (message: string) => void;
-  onFileUpload?: (file: File) => Promise<string>;
+  onSend?: (message: string, files?: File[]) => void;
 }
 
 interface DataSource {
@@ -40,7 +39,7 @@ interface Agent {
   avatar_url?: string;
 }
 
-export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
+export function MessageInput({ onSend }: MessageInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imagePrompt, setImagePrompt] = useState("");
@@ -57,6 +56,8 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
   const [isLoading, setIsLoading] = useState(false);
   const lastCaretPosition = useRef<number>(0);
   const { data: session } = useSession();
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -104,19 +105,20 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
     },
     editorProps: {
       handleKeyDown: (view, event) => {
-        if (event.key === 'Enter' && (event.shiftKey || event.metaKey)) {
-          return false;
-        }
-        
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' && !event.shiftKey && !event.metaKey) {
           event.preventDefault();
           if (editor && editor.getHTML().trim()) {
-            onSend?.(editor.getHTML().trim());  // Send HTML content instead of plain text
+            onSend?.(editor.getHTML().trim(), selectedFiles);
             editor.commands.setContent('');
+            setSelectedFiles([]);
             const element = editor.view.dom as HTMLElement;
             element.style.height = '40px';
           }
           return true;
+        }
+        
+        if (event.key === 'Enter' && (event.shiftKey || event.metaKey)) {
+          return false;
         }
 
         // Handle mention triggers
@@ -180,8 +182,9 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
     e.preventDefault();
     if (!editor || !editor.getHTML().trim()) return;
 
-    onSend?.(editor.getHTML().trim()); // Send HTML content instead of plain text
+    onSend?.(editor.getHTML().trim(), selectedFiles);
     editor.commands.setContent('');
+    setSelectedFiles([]);
   };
 
   const handleImageGeneration = async () => {
@@ -243,43 +246,13 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setSelectedFile(file);
-    setIsUploading(true);
-    
-    try {
-      // Create FormData
-      const formData = new FormData();
-      formData.append('file', file);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setSelectedFiles(prev => [...prev, ...files]);
+  };
 
-      // Upload file to /api/upload-file
-      const response = await fetch('/api/upload-file', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload file');
-      }
-
-      const data = await response.json();
-      
-      // Insert file link into editor
-      if (data.url && editor) {
-        const fileHtml = `<p>📎 <a href="${data.url}" target="_blank" rel="noopener noreferrer">${file.name}</a></p>`;
-        editor.commands.setContent(editor.getHTML() + fileHtml);
-      }
-    } catch (error) {
-      console.error('Failed to upload file:', error);
-      alert('Failed to upload file. Please try again.');
-    } finally {
-      setIsUploading(false);
-      setIsFileModalOpen(false);
-      setSelectedFile(null);
-    }
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleMentionSelect = (item: Agent | DataSource) => {
@@ -313,6 +286,32 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
       <div>
         <form onSubmit={handleSubmit}>
           <div className="bg-white rounded-lg border border-gray-200">
+            {/* File Preview Section */}
+            {selectedFiles.length > 0 && (
+              <div className="px-3 py-2 border-b border-gray-200">
+                <div className="flex flex-wrap gap-2">
+                  {selectedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 bg-gray-100 rounded-md px-3 py-1"
+                    >
+                      <Paperclip className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700 truncate max-w-[200px]">
+                        {file.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Rich Text Editor */}
             <EditorContent
               editor={editor}
@@ -350,9 +349,16 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
                   <Code className="h-4 w-4" />
                 </button>
                 <div className="w-px h-4 bg-gray-200 mx-1" /> {/* Separator */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  multiple
+                />
                 <button
                   type="button"
-                  onClick={() => setIsFileModalOpen(true)}
+                  onClick={() => fileInputRef.current?.click()}
                   className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"
                 >
                   <Plus className="h-4 w-4" />
@@ -433,31 +439,6 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
                   {isGenerating ? "Generating..." : "Generate"}
                 </Button>
               )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isFileModalOpen} onOpenChange={setIsFileModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Upload File</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <Input
-              type="file"
-              onChange={handleFileUpload}
-              accept=".pdf,.doc,.docx,.txt"
-              disabled={isUploading}
-            />
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setIsFileModalOpen(false)}
-                disabled={isUploading}
-              >
-                Cancel
-              </Button>
             </div>
           </div>
         </DialogContent>
