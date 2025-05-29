@@ -1,7 +1,7 @@
 "use client";
 import { Plus, FileCode, Image as ImageIcon, ArrowRight, Bold, Italic, Code, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -12,10 +12,32 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import Popper from '@mui/material/Popper';
+import Paper from '@mui/material/Paper';
+import MenuList from '@mui/material/MenuList';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemText from '@mui/material/ListItemText';
+import CircularProgress from '@mui/material/CircularProgress';
+import { useSession } from "next-auth/react";
+import Avatar from '@mui/material/Avatar';
+import ListItemAvatar from '@mui/material/ListItemAvatar';
 
 interface MessageInputProps {
   onSend?: (message: string) => void;
   onFileUpload?: (file: File) => Promise<string>;
+}
+
+interface DataSource {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+interface Agent {
+  id: string;
+  name: string;
+  description?: string;
+  avatar_url?: string;
 }
 
 export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
@@ -27,6 +49,48 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [mentionAnchor, setMentionAnchor] = useState<null | HTMLElement>(null);
+  const [mentionSearch, setMentionSearch] = useState("");
+  const [mentionType, setMentionType] = useState<"agent" | "knowledge" | null>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [dataSources, setDataSources] = useState<DataSource[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const lastCaretPosition = useRef<number>(0);
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!mentionType || !session?.user?.accessToken) return;
+      
+      setIsLoading(true);
+      try {
+        const endpoint = mentionType === 'agent' 
+          ? `${process.env.NEXT_PUBLIC_API_URL}/agents` 
+          : `${process.env.NEXT_PUBLIC_API_URL}/data-sources`;
+          
+        const response = await fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${session.user.accessToken}`,
+          }
+        });
+        
+        if (!response.ok) throw new Error('Failed to fetch');
+        
+        const data = await response.json();
+        if (mentionType === 'agent') {
+          setAgents(data);
+        } else {
+          setDataSources(data);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [mentionType, session]);
 
   // Initialize TipTap editor
   const editor = useEditor({
@@ -54,6 +118,23 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
           }
           return true;
         }
+
+        // Handle mention triggers
+        if (event.key === '/' || event.key === '@') {
+          const element = editor?.view.dom as HTMLElement;
+          setMentionAnchor(element);
+          setMentionType(event.key === '@' ? 'agent' : 'knowledge');
+          setMentionSearch("");
+          return false;
+        }
+
+        // Close mention popup on escape
+        if (event.key === 'Escape' && mentionAnchor) {
+          setMentionAnchor(null);
+          setMentionType(null);
+          return true;
+        }
+
         return false;
       },
       attributes: {
@@ -69,6 +150,24 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
       element.style.height = '40px'; // Reset to minimum
       const newHeight = Math.min(element.scrollHeight, 200); // Cap at max height
       element.style.height = `${newHeight}px`;
+
+      // Update mention search
+      if (mentionType) {
+        const currentPosition = editor.state.selection.from;
+        const text = editor.state.doc.textBetween(
+          Math.max(0, currentPosition - 100),
+          currentPosition,
+          "\n"
+        );
+        const lastTrigger = mentionType === 'agent' ? '@' : '/';
+        const match = text.match(new RegExp(`${lastTrigger}([^${lastTrigger}\\s]*)$`));
+        if (match) {
+          setMentionSearch(match[1]);
+        } else {
+          setMentionAnchor(null);
+          setMentionType(null);
+        }
+      }
     },
   });
 
@@ -182,6 +281,32 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
       setSelectedFile(null);
     }
   };
+
+  const handleMentionSelect = (item: Agent | DataSource) => {
+    if (!editor) return;
+
+    const currentPosition = editor.state.selection.from;
+    const prefix = mentionType === 'agent' ? '@' : '/';
+    const searchText = `${prefix}${mentionSearch}`;
+    const startPosition = currentPosition - searchText.length;
+
+    // Replace the search text with the selected item
+    editor
+      .chain()
+      .focus()
+      .setTextSelection(startPosition)
+      .deleteRange({ from: startPosition, to: currentPosition })
+      .insertContent(`${prefix}${item.name} `)
+      .run();
+
+    setMentionAnchor(null);
+    setMentionType(null);
+  };
+
+  // Filter items based on search
+  const filteredItems = mentionType === 'agent'
+    ? agents.filter(agent => agent.name.toLowerCase().includes(mentionSearch.toLowerCase()))
+    : dataSources.filter(source => source.name.toLowerCase().includes(mentionSearch.toLowerCase()));
 
   return (
     <div className="w-full">
@@ -337,6 +462,71 @@ export function MessageInput({ onSend, onFileUpload }: MessageInputProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Updated Mention Popup */}
+      <Popper
+        open={Boolean(mentionAnchor)}
+        anchorEl={mentionAnchor}
+        placement="top-start"
+        style={{ zIndex: 1300 }}
+      >
+        <Paper elevation={3} sx={{ width: 320, maxHeight: 400, overflow: 'auto' }}>
+          <MenuList>
+            {isLoading ? (
+              <MenuItem disabled>
+                <CircularProgress size={20} sx={{ mr: 1 }} />
+                Loading...
+              </MenuItem>
+            ) : filteredItems.length === 0 ? (
+              <MenuItem disabled>
+                <ListItemText>No results found</ListItemText>
+              </MenuItem>
+            ) : (
+              filteredItems.map((item) => (
+                <MenuItem
+                  key={item.id}
+                  onClick={() => handleMentionSelect(item)}
+                  sx={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    py: 1
+                  }}
+                >
+                  {mentionType === 'agent' && (
+                    <ListItemAvatar>
+                      <Avatar
+                        src={`data:image/png;base64,${(item as Agent).avatar_base64}`}
+                        alt={item.name}
+                        sx={{ width: 32, height: 32 }}
+                      >
+                        {item.name.charAt(0)}
+                      </Avatar>
+                    </ListItemAvatar>
+                  )}
+                  <ListItemText
+                    primary={item.name}
+                    secondary={item.description}
+                    primaryTypographyProps={{
+                      sx: { fontWeight: 'medium' }
+                    }}
+                    secondaryTypographyProps={{
+                      sx: { 
+                        fontSize: '0.875rem',
+                        color: 'text.secondary',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }
+                    }}
+                  />
+                </MenuItem>
+              ))
+            )}
+          </MenuList>
+        </Paper>
+      </Popper>
     </div>
   );
 }
