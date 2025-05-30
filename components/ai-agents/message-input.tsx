@@ -1,5 +1,5 @@
 "use client";
-import { Plus, FileCode, Image as ImageIcon, ArrowRight, Bold, Italic, Code, X, Paperclip } from "lucide-react";
+import { Plus, FileCode, Image as ImageIcon, ArrowRight, Bold, Italic, Code, X, Paperclip, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -24,6 +24,7 @@ import ListItemAvatar from '@mui/material/ListItemAvatar';
 
 interface MessageInputProps {
   onSend?: (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string) => void;
+  onWebSearch?: (query: string) => void;
 }
 
 interface DataSource {
@@ -39,7 +40,7 @@ interface Agent {
   avatar_url?: string;
 }
 
-export function MessageInput({ onSend }: MessageInputProps) {
+export function MessageInput({ onSend, onWebSearch }: MessageInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imagePrompt, setImagePrompt] = useState("");
@@ -56,6 +57,7 @@ export function MessageInput({ onSend }: MessageInputProps) {
   const { data: session } = useSession();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isWebSearchMode, setIsWebSearchMode] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -106,9 +108,14 @@ export function MessageInput({ onSend }: MessageInputProps) {
         if (event.key === 'Enter' && !event.shiftKey && !event.metaKey) {
           event.preventDefault();
           if (editor && editor.getHTML().trim()) {
-            onSend?.(editor.getHTML().trim(), selectedFiles, false, "");
+            if (isWebSearchMode) {
+              onWebSearch?.(editor.getHTML().trim());
+            } else {
+              onSend?.(editor.getHTML().trim(), selectedFiles, false, "");
+            }
             editor.commands.setContent('');
             setSelectedFiles([]);
+            setIsWebSearchMode(false);
             const element = editor.view.dom as HTMLElement;
             element.style.height = '40px';
           }
@@ -180,9 +187,18 @@ export function MessageInput({ onSend }: MessageInputProps) {
     e.preventDefault();
     if (!editor || !editor.getHTML().trim()) return;
 
-    onSend?.(editor.getHTML().trim(), selectedFiles, false, "");
+    if (isWebSearchMode) {
+      // Call web search with the input content
+      onWebSearch?.(editor.getHTML().trim());
+    } else {
+      // Normal message send
+      onSend?.(editor.getHTML().trim(), selectedFiles, false, "");
+    }
+    
+    // Clear input and reset mode
     editor.commands.setContent('');
     setSelectedFiles([]);
+    setIsWebSearchMode(false);
   };
 
   const handleImageGeneration = async () => {
@@ -235,7 +251,7 @@ export function MessageInput({ onSend }: MessageInputProps) {
     <div className="w-full">
       <div>
         <form onSubmit={handleSubmit}>
-          <div className="bg-white rounded-lg border border-gray-200">
+          <div className={`bg-white rounded-lg border border-gray-200 ${isWebSearchMode ? 'ring-2 ring-blue-500' : ''}`}>
             {/* File Preview Section */}
             {selectedFiles.length > 0 && (
               <div className="px-3 py-2 border-b border-gray-200">
@@ -259,6 +275,13 @@ export function MessageInput({ onSend }: MessageInputProps) {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Show search mode indicator */}
+            {isWebSearchMode && (
+              <div className="px-3 py-1 bg-blue-50 text-blue-700 text-sm">
+                Web Search Mode
               </div>
             )}
 
@@ -306,6 +329,15 @@ export function MessageInput({ onSend }: MessageInputProps) {
                 >
                   <ImageIcon className="h-4 w-4" />
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setIsWebSearchMode(!isWebSearchMode)}
+                  className={`p-1.5 hover:bg-gray-100 rounded-md ${
+                    isWebSearchMode ? 'bg-blue-100 text-blue-700' : 'text-gray-500'
+                  }`}
+                >
+                  <Search className="h-4 w-4" />
+                </button>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -326,7 +358,11 @@ export function MessageInput({ onSend }: MessageInputProps) {
               <Button
                 type="submit"
                 size="icon"
-                className="bg-transparent hover:bg-gray-100 text-gray-500 h-8 w-8"
+                className={`h-8 w-8 ${
+                  isWebSearchMode 
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                    : 'bg-transparent hover:bg-gray-100 text-gray-500'
+                }`}
               >
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -336,8 +372,14 @@ export function MessageInput({ onSend }: MessageInputProps) {
 
         {/* Add hint text */}
         <div className="text-center text-sm text-gray-500 mt-2">
-          <p>Type / to reference information in the knowledge base</p>
-          <p>Type @ to mention an AI Agent</p>
+          {isWebSearchMode ? (
+            <p>Enter your search query and press Enter or click the send button</p>
+          ) : (
+            <>
+              <p>Type / to reference information in the knowledge base</p>
+              <p>Type @ to mention an AI Agent</p>
+            </>
+          )}
         </div>
       </div>
 
