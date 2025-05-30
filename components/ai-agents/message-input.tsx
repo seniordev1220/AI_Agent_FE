@@ -23,7 +23,7 @@ import Avatar from '@mui/material/Avatar';
 import ListItemAvatar from '@mui/material/ListItemAvatar';
 
 interface MessageInputProps {
-  onSend?: (message: string, files?: File[]) => void;
+  onSend?: (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string) => void;
 }
 
 interface DataSource {
@@ -43,8 +43,6 @@ export function MessageInput({ onSend }: MessageInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imagePrompt, setImagePrompt] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -108,7 +106,7 @@ export function MessageInput({ onSend }: MessageInputProps) {
         if (event.key === 'Enter' && !event.shiftKey && !event.metaKey) {
           event.preventDefault();
           if (editor && editor.getHTML().trim()) {
-            onSend?.(editor.getHTML().trim(), selectedFiles);
+            onSend?.(editor.getHTML().trim(), selectedFiles, false, "");
             editor.commands.setContent('');
             setSelectedFiles([]);
             const element = editor.view.dom as HTMLElement;
@@ -182,7 +180,7 @@ export function MessageInput({ onSend }: MessageInputProps) {
     e.preventDefault();
     if (!editor || !editor.getHTML().trim()) return;
 
-    onSend?.(editor.getHTML().trim(), selectedFiles);
+    onSend?.(editor.getHTML().trim(), selectedFiles, false, "");
     editor.commands.setContent('');
     setSelectedFiles([]);
   };
@@ -190,58 +188,10 @@ export function MessageInput({ onSend }: MessageInputProps) {
   const handleImageGeneration = async () => {
     if (!imagePrompt) return;
     
-    setIsGenerating(true);
-    try {
-      console.log('Sending request to generate image...');
-      const response = await fetch('/api/generate-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt: imagePrompt }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('Received image URL:', data.imageUrl);
-      
-      if (!data.imageUrl) {
-        throw new Error('No image URL received');
-      }
-      
-      setGeneratedImage(data.imageUrl);
-    } catch (error) {
-      console.error('Failed to generate image:', error);
-      // You might want to show an error message to the user
-      alert('Failed to generate image. Please try again.');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const insertGeneratedImage = () => {
-    if (generatedImage && editor) {
-      // Insert the image with specific styling
-      const imageHtml = `<img src="${generatedImage}" alt="${imagePrompt}" style="max-width: 100%; border-radius: 8px; margin: 8px 0;" />`;
-      console.log('Inserting image:', generatedImage);
-      // If there's existing content, add a line break before the image
-      const currentContent = editor.getHTML().trim();
-      const newContent = currentContent 
-        ? `${currentContent}<br/>${imageHtml}` 
-        : imageHtml;
-      
-      editor.commands.setContent(newContent);
-      
-      // Send the message immediately
-      onSend?.(newContent);
-      
-      // Clear the editor and reset states
-      editor.commands.setContent('');
+    // Instead of generating the image here, we'll send it to the parent component
+    if (onSend) {
+      onSend("", [], true, imagePrompt);
       setIsImageModalOpen(false);
-      setGeneratedImage(null);
       setImagePrompt("");
     }
   };
@@ -349,6 +299,13 @@ export function MessageInput({ onSend }: MessageInputProps) {
                   <Code className="h-4 w-4" />
                 </button>
                 <div className="w-px h-4 bg-gray-200 mx-1" /> {/* Separator */}
+                <button
+                  type="button"
+                  onClick={() => setIsImageModalOpen(true)}
+                  className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                </button>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -362,13 +319,6 @@ export function MessageInput({ onSend }: MessageInputProps) {
                   className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"
                 >
                   <Plus className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsImageModalOpen(true)}
-                  className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"
-                >
-                  <ImageIcon className="h-4 w-4" />
                 </button>
               </div>
 
@@ -391,7 +341,7 @@ export function MessageInput({ onSend }: MessageInputProps) {
         </div>
       </div>
 
-      {/* Image Generation Modal */}
+      {/* Update Image Generation Modal */}
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -407,32 +357,22 @@ export function MessageInput({ onSend }: MessageInputProps) {
                 placeholder="Describe the image you want to generate..."
               />
             </div>
-            {generatedImage && (
-              <div className="relative">
-                <img
-                  src={generatedImage}
-                  alt={imagePrompt}
-                  className="w-full rounded-lg"
-                />
-              </div>
-            )}
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
-                onClick={() => setIsImageModalOpen(false)}
+                onClick={() => {
+                  setIsImageModalOpen(false);
+                  setImagePrompt("");
+                }}
               >
                 Cancel
               </Button>
-              {generatedImage ? (
-                <Button onClick={insertGeneratedImage}>Insert Image</Button>
-              ) : (
-                <Button
-                  onClick={handleImageGeneration}
-                  disabled={isGenerating || !imagePrompt}
-                >
-                  {isGenerating ? "Generating..." : "Generate"}
-                </Button>
-              )}
+              <Button
+                onClick={handleImageGeneration}
+                disabled={!imagePrompt}
+              >
+                Generate
+              </Button>
             </div>
           </div>
         </DialogContent>
