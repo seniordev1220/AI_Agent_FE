@@ -16,13 +16,10 @@ interface DataSource {
   id: string;
   name: string;
   source_type: string;
-  is_connected: boolean;
-  created_at: string;
-  updated_at: string;
-  owner: string;
+  created_at: Date;
+  updated_at: Date;
   user_id: string;
-  raw_size_bytes: number;
-  document_count: number;
+  connection_settings: JSON;
 }
 
 const formatSize = (bytes: number, documentCount: number) => {
@@ -58,6 +55,7 @@ export function DataTable() {
       if (!response.ok) throw new Error('Failed to fetch data sources');
       
       const sources = await response.json();
+      console.log(sources)
       setDataSources(sources);
     } catch (error) {
       console.error('Error loading data sources:', error);
@@ -167,7 +165,6 @@ export function DataTable() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentItems = dataSources.slice(startIndex, endIndex);
-  console.log("&&&&",currentItems)
   const handleStatusChange = async (sourceId: string, isConnected: boolean | null) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/${sourceId}/connection-test`, {
@@ -286,7 +283,8 @@ export function DataTable() {
               </td>
               <td className="p-4">
                 <div className="text-sm text-gray-600">
-                  {formatSize(source.raw_size_bytes, source.document_count)}
+                  {/* {formatSize(source.raw_size_bytes, source.document_count)} */}
+                  {formatBytes(source.connection_settings.file_size)}
                 </div>
               </td>
               <td className="p-4">
