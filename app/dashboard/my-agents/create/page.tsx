@@ -68,7 +68,7 @@ interface AgentCreateData {
   base_model: string;
   category: string;
   reference_enabled: boolean;
-  knowledge_base_ids?: string[];
+  vector_source_ids?: string[];
 }
 
 // Add this interface
@@ -255,8 +255,10 @@ export default function CreateAgentPage() {
         base_model: baseModel,
         category,
         reference_enabled: referenceEnabled,
-        knowledge_base_ids: selectedKnowledgeBases
+        vector_source_ids: selectedKnowledgeBases
       }
+
+      console.log(agentData)
 
       const formData = new FormData()
       formData.append('agent_data', JSON.stringify(agentData))
@@ -625,7 +627,7 @@ You will help analyze information, and provide advice to boost company revenue."
                         <Box>
                           <Typography>{source.name}</Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {formatSize(source.raw_size_bytes, source.document_count)}
+                            {formatBytes(source.connection_settings.file_size)}
                           </Typography>
                         </Box>
                       </Box>
