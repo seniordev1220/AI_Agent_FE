@@ -56,6 +56,7 @@ interface DataSource {
   raw_size_bytes: number;
   document_count: number;
   selected?: boolean;
+  is_converted: boolean;
 }
 
 // Add these interfaces at the top with other interfaces
@@ -128,10 +129,7 @@ export default function CreateAgentPage() {
           if (agent.avatar_base64) {
             setAvatarUrl(`data:image/jpeg;base64,${agent.avatar_base64}`)
           }
-          // Set selected knowledge bases from vector_source_ids
-          if (agent.vector_source_ids) {
-            setSelectedKnowledgeBases(agent.vector_source_ids)
-          }
+          // Load knowledge bases if needed
         })
     }
   }, [isEditing, agentId, session])
@@ -157,10 +155,12 @@ export default function CreateAgentPage() {
 
         const data = await response.json();
         // Add selected property to each data source
-        const sourcesWithSelection = data.map((source: DataSource) => ({
-          ...source,
-          selected: selectedKnowledgeBases.includes(source.id)
-        }));
+        const sourcesWithSelection = data
+          .filter((source: DataSource) => source.is_converted === true)
+          .map((source: DataSource) => ({
+            ...source,
+            selected: selectedKnowledgeBases.includes(source.id)
+          }));
         setDataSources(sourcesWithSelection);
       } catch (error) {
         console.error('Error fetching data sources:', error);
@@ -292,7 +292,6 @@ export default function CreateAgentPage() {
 
   const handleOpenChat = () => {
     if (isEditing) {
-      console.log(selectedKnowledgeBases)
       router.push(`/dashboard/chat/${agentId}`)
     }
   }
@@ -635,9 +634,7 @@ You will help analyze information, and provide advice to boost company revenue."
                           </Typography>
                         </Box>
                       </Box>
-                      {selectedKnowledgeBases.includes(source.id) && (
-                        <CheckIcon sx={{ color: 'primary.main' }} />
-                      )}
+                      {source.selected && <CheckIcon sx={{ color: 'primary.main' }} />}
                     </Box>
                   ))}
                 </Box>

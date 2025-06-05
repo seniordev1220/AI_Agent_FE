@@ -174,7 +174,7 @@ export function DataTable() {
           'Authorization': `Bearer ${session?.user?.accessToken}`
         },
         body: JSON.stringify({
-          is_connected: isConnected
+          is_converted: isConnected
         })
       });
 
@@ -185,7 +185,7 @@ export function DataTable() {
       setDataSources(prev => 
         prev.map(source =>
           source.id === sourceId 
-            ? { ...source, is_connected: isConnected ?? false }
+            ? { ...source, is_converted: isConnected ?? false }
             : source
         )
       );
@@ -248,8 +248,8 @@ export function DataTable() {
                   className="flex items-center gap-2 cursor-pointer"
                   onClick={() => setActiveDropdown(activeDropdown === source.id ? null : source.id)}
                 >
-                  <StatusIcon isConnected={source.is_connected} />
-                  <span className="text-sm">{getStatusText(source.is_connected)}</span>
+                  <StatusIcon isConnected={source.is_converted} />
+                  <span className="text-sm">{getStatusText(source.is_converted)}</span>
                 </div>
                 
                 {activeDropdown === source.id && (
