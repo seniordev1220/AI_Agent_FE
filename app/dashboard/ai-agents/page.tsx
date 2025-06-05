@@ -6,6 +6,7 @@ import { ModelSelector } from "@/components/ai-agents/model-selector"
 import { MessageInput } from "@/components/ai-agents/message-input"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { toast } from "react-hot-toast"
 
 interface Message {
   id: string
@@ -27,7 +28,7 @@ export default function AIAgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
-  const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo"); // Add this line
+  const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo")
   const { data: session } = useSession()
 
   useEffect(() => {
@@ -45,34 +46,64 @@ export default function AIAgentsPage() {
     }
 
     loadAgents()
-  }, [])
+  }, [session])
 
-  // Function to add new agent
-  const addAgent = (newAgent: Agent) => {
-    const updatedAgents = [...agents, newAgent]
-    setAgents(updatedAgents)
-    localStorage.setItem('myAgents', JSON.stringify(updatedAgents))
-  }
+  const stripHtmlTags = (html: string) => {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent || '';
+  };
 
-  // Function to update existing agent
-  const updateAgent = (updatedAgent: Agent) => {
-    const updatedAgents = agents.map(agent => 
-      agent.id === updatedAgent.id ? updatedAgent : agent
-    )
-    setAgents(updatedAgents)
-    localStorage.setItem('myAgents', JSON.stringify(updatedAgents))
-  }
+  const handleSendMessage = async (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string) => {
+    if (!selectedAgent || !session) {
+      toast.error('Please select an agent first');
+      return;
+    }
 
-  // Function to delete agent
-  const deleteAgent = (agentId: string) => {
-    const updatedAgents = agents.filter(agent => agent.id !== agentId)
-    setAgents(updatedAgents)
-    localStorage.setItem('myAgents', JSON.stringify(updatedAgents))
-  }
+    try {
+      // Strip HTML tags from the message
+      const strippedMessage = stripHtmlTags(message);
+      
+      const formData = new FormData();
+      formData.append('content', strippedMessage);
+      formData.append('model', selectedModel);
+      
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append('files', file);
+        });
+      }
 
-  const handleAgentClick = (agentId: string) => {
-    console.log("Navigating to agent:", agentId)
-    router.push(`/dashboard/chat/${agentId}`)
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/chat/${selectedAgent.id}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.user.accessToken}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to get a response from the server.");
+      }
+
+      // After successful message send, navigate to the chat page
+      router.push(`/dashboard/chat/${selectedAgent.id}`);
+    } catch (error) {
+      console.error("Error in chat completion:", error);
+      toast.error(error instanceof Error ? error.message : 'Failed to send message');
+    }
+  };
+
+  const handleAgentClick = (agent: Agent) => {
+    setSelectedAgent(agent);
+    // Focus the message input after selecting an agent
+    const messageInput = document.querySelector('[contenteditable="true"]') as HTMLElement;
+    if (messageInput) {
+      messageInput.focus();
+    }
   }
 
   return (
@@ -99,8 +130,12 @@ export default function AIAgentsPage() {
             agents.map((agent) => (
               <div
                 key={agent.id}
-                className="flex gap-4 items-start cursor-pointer hover:bg-gray-50 p-4 rounded-lg transition-colors"
-                onClick={() => handleAgentClick(agent.id)}
+                className={`flex gap-4 items-start cursor-pointer p-4 rounded-lg transition-colors ${
+                  selectedAgent?.id === agent.id 
+                    ? 'bg-blue-50 ring-2 ring-blue-500' 
+                    : 'hover:bg-gray-50'
+                }`}
+                onClick={() => handleAgentClick(agent)}
               >
                 <Image
                   src={`data:image/png;base64,${agent.avatar_base64}`}
@@ -123,18 +158,15 @@ export default function AIAgentsPage() {
         </div>
         <div className="bg-white mt-auto p-4 z-10">
           <div className="mx-auto">
+            {selectedAgent ? (
+              <div className="mb-2 px-2">
+                <p className="text-sm text-blue-600">
+                  Chatting with: {selectedAgent.name}
+                </p>
+              </div>
+            ) : null}
             <MessageInput
-              onSend={(message) => {
-                setMessages([
-                  ...messages,
-                  {
-                    id: Date.now().toString(),
-                    content: message,
-                    role: 'user',
-                    timestamp: new Date(),
-                  },
-                ])
-              }}
+              onSend={handleSendMessage}
             />
           </div>
         </div>

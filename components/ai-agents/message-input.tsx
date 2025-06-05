@@ -324,13 +324,6 @@ export function MessageInput({ onSend, onWebSearch }: MessageInputProps) {
                 <div className="w-px h-4 bg-gray-200 mx-1" /> {/* Separator */}
                 <button
                   type="button"
-                  onClick={() => setIsImageModalOpen(true)}
-                  className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"
-                >
-                  <ImageIcon className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
                   onClick={() => setIsWebSearchMode(!isWebSearchMode)}
                   className={`p-1.5 hover:bg-gray-100 rounded-md ${
                     isWebSearchMode ? 'bg-blue-100 text-blue-700' : 'text-gray-500'

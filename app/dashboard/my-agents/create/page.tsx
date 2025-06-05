@@ -128,7 +128,10 @@ export default function CreateAgentPage() {
           if (agent.avatar_base64) {
             setAvatarUrl(`data:image/jpeg;base64,${agent.avatar_base64}`)
           }
-          // Load knowledge bases if needed
+          // Set selected knowledge bases from vector_source_ids
+          if (agent.vector_source_ids) {
+            setSelectedKnowledgeBases(agent.vector_source_ids)
+          }
         })
     }
   }, [isEditing, agentId, session])
@@ -289,6 +292,7 @@ export default function CreateAgentPage() {
 
   const handleOpenChat = () => {
     if (isEditing) {
+      console.log(selectedKnowledgeBases)
       router.push(`/dashboard/chat/${agentId}`)
     }
   }
@@ -631,7 +635,9 @@ You will help analyze information, and provide advice to boost company revenue."
                           </Typography>
                         </Box>
                       </Box>
-                      {source.selected && <CheckIcon sx={{ color: 'primary.main' }} />}
+                      {selectedKnowledgeBases.includes(source.id) && (
+                        <CheckIcon sx={{ color: 'primary.main' }} />
+                      )}
                     </Box>
                   ))}
                 </Box>
