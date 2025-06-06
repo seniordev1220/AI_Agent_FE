@@ -6,7 +6,7 @@ import { ModelSelector } from "@/components/ai-agents/model-selector"
 import { MessageInput } from "@/components/ai-agents/message-input"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { toast } from "react-hot-toast"
+import { toast } from "sonner"
 
 interface Message {
   id: string

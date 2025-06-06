@@ -42,18 +42,16 @@ export function DashboardStats() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [userTokens, setUserTokens] = useState<UserTokenUsage[]>([]);
   const [messageStats, setMessageStats] = useState<DailyMessages | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [range, setRange] = useState("all"); // "all" or "30d"
 
   useEffect(() => {
     const fetchData = async () => {
       if (!session?.user?.accessToken) return;
 
       try {
-        setIsLoading(true);
-        
         // Fetch main stats
-        const statsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/stats`, {
+        const statsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/stats?range=${range}`, {
           headers: {
             Authorization: `Bearer ${session.user.accessToken}`,
           },
@@ -89,13 +87,11 @@ export function DashboardStats() {
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         setError('Failed to load dashboard statistics');
-      } finally {
-        setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [session]);
+  }, [session, range]);
 
   // Format token usage for chart
   const tokenChartData = {
@@ -125,14 +121,6 @@ export function DashboardStats() {
     }]
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <div className="text-center">Loading dashboard statistics...</div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="p-6 space-y-6">
@@ -153,13 +141,18 @@ export function DashboardStats() {
       {/* Overview Section */}
       <div>
         <h2 className="text-xl font-medium mb-4">Your Overview</h2>
-        <div className="flex gap-4 mb-4">
-          <button className="bg-blue-500 text-white px-6 py-2 rounded-full">
+        <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+          <button
+            className={`px-4 py-2 rounded ${range === "all" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
+            onClick={() => setRange("all")}
+          >
             All time
           </button>
-          <button className="bg-white text-gray-700 px-6 py-2 rounded-full flex items-center gap-2">
+          <button
+            className={`px-4 py-2 rounded border ${range === "30d" ? "bg-blue-600 text-white" : "border-gray-100 text-gray-700"}`}
+            onClick={() => setRange("30d")}
+          >
             Last 30 days
-            <span className="text-gray-400">↑↓</span>
           </button>
         </div>
       </div>

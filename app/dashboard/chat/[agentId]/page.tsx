@@ -4,7 +4,7 @@ import { ModelSelector } from "@/components/ai-agents/model-selector";
 import { MessageInput } from "@/components/ai-agents/message-input";
 import React from "react";
 import { useSession } from "next-auth/react";
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { Paperclip, Upload, ExternalLink } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ interface ChatMessage {
   imageUrl?: string;
   search_results?: SearchResult[];
   citations?: string[];
+  raw_content?: string;
 }
 
 interface Agent {
@@ -142,26 +143,21 @@ export default function ChatPage({
         
         // Format the content of each message in the history
         const formattedHistory = history.messages.map((msg: ChatMessage) => {
-          if (msg.role === "assistant" && msg.model === "sonar") {
-            // Ensure citations and search_results are properly structured
-            const citations = Array.isArray(msg.citations) ? msg.citations : [];
-            const search_results = Array.isArray(msg.search_results) ? msg.search_results : [];
-            
-            // Format the content with citations
-            const formattedContent = formatContent(msg.content, citations);
-            
-            return {
-              ...msg,
-              content: formattedContent,
-              citations: citations,
-              search_results: search_results,
-              model: "sonar"  // Ensure model is set correctly
-            };
-          }
-          return msg;
+          // Store the raw content
+          const raw_content = msg.content;
+          
+          // Format the content
+          const formattedContent = formatContent(msg.content, msg.citations);
+          
+          return {
+            ...msg,
+            raw_content: raw_content,
+            content: formattedContent,
+            citations: Array.isArray(msg.citations) ? msg.citations : [],
+            search_results: Array.isArray(msg.search_results) ? msg.search_results : []
+          };
         });
         
-        console.log('Formatted History:', formattedHistory); // Debug log
         setChatHistory(formattedHistory);
       } catch (err) {
         console.error("Error loading agent:", err);
@@ -204,6 +200,23 @@ export default function ChatPage({
         // Format bold text (wrapped in **)
         line = line.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>');
         
+        // Format download links - matches both [Download filename](/path) and [Download filename](/path)
+        const downloadMatch = line.match(/\[Download ([^\]]+)\](?:\(|\[)([^\)]+)(?:\)|\])/);
+        if (downloadMatch) {
+          const [fullMatch, filename, url] = downloadMatch;
+          // Extract file_id or filename from the url (e.g., /download/17_generated_7b99235.pdf)
+          // You may need to adjust this regex if your file_id format changes
+          const fileIdMatch = url.match(/\/download\/([^\/]+)/);
+          const fileId = fileIdMatch ? fileIdMatch[1] : url;
+          // Construct the correct API endpoint
+          const downloadApiUrl = `https://app.finiite.com/demo/api/chat/download/${fileId}`;
+          // Return only the anchor tag, no extra whitespace or block elements
+          return line.replace(
+            fullMatch,
+            `<a href="javascript:void(0)" class="text-blue-600 hover:underline flex items-center gap-1" onclick="window.downloadFile('${downloadApiUrl}', '${filename}')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Download ${filename}</a>`
+          );
+        }
+        
         // Format citation numbers [n] as links if citations exist
         if (citations?.length) {
           line = line.replace(/\[(\d+)\]/g, (match, num) => {
@@ -215,21 +228,56 @@ export default function ChatPage({
           });
         }
         
-        // Format links in sources and search results
-        if (line.startsWith('- ')) {
-          const urlMatch = line.match(/\((https?:\/\/[^\s)]+)\)/);
-          if (urlMatch) {
-            line = line.replace(
-              urlMatch[0],
-              `(<a href="${urlMatch[1]}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">${urlMatch[1]}</a>)`
-            );
+        return line.trim(); // Remove whitespace-only lines
+      })
+      .filter(line => line.length > 0) // Remove empty lines
+      .join(''); // Remove newlines between elements
+  };
+
+  // Add the download file helper function
+  useEffect(() => {
+    // Add the downloadFile function to the window object
+    (window as any).downloadFile = async (url: string, filename: string) => {
+      try {
+        console.log('Downloading file:', url, filename);
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${session?.user.accessToken}`,
+          },
+        });
+        
+        if (!response.ok) {
+          console.error('Download failed:', response.status, response.statusText);
+          const errorText = await response.text();
+          console.error('Error response:', errorText);
+          throw new Error(`Failed to download file: ${response.statusText}`);
+        }
+        
+        // Check the content type to handle errors that might be returned as JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const jsonResponse = await response.json();
+          if (jsonResponse.error) {
+            throw new Error(jsonResponse.error);
           }
         }
         
-        return line;
-      })
-      .join('\n');
-  };
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+        toast.success('File downloaded successfully');
+      } catch (error) {
+        console.error('Error downloading file:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to download file');
+      }
+    };
+  }, [session]);
 
   // Update the handleSendMessage function
   const handleSendMessage = async (message: string, files?: File[]) => {
@@ -250,7 +298,7 @@ export default function ChatPage({
 
     const newMessage: ChatMessage = { 
       role: "user", 
-      content: strippedMessage, // Use stripped message for display
+      content: strippedMessage,
       model: selectedModel,
       files: files || [],
       attachments: []
@@ -277,11 +325,12 @@ export default function ChatPage({
       }
 
       const assistantResponse = await response.json();
-      const formattedContent = formatContent(assistantResponse.content);
       
+      // Store both raw and formatted content
       const assistantMessage: ChatMessage = {
         ...assistantResponse,
-        content: formattedContent,
+        raw_content: assistantResponse.content, // Store the raw content
+        content: formatContent(assistantResponse.content), // Store the formatted content
         model: selectedModel
       };
 

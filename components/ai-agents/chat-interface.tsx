@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Send, Upload } from 'lucide-react'
 import Image from 'next/image'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { ModelSelector } from '@/components/ai-agents/model-selector'
 
 interface ChatMessage {

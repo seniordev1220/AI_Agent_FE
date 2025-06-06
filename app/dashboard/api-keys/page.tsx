@@ -72,7 +72,6 @@ export default function ApiKeysPage() {
   const [newApiKey, setNewApiKey] = useState('')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [loading, setLoading] = useState(false)
-  const [initialLoading, setInitialLoading] = useState(true)
   const [validatingKeys, setValidatingKeys] = useState<Set<string>>(new Set())
   
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([
@@ -134,7 +133,6 @@ export default function ApiKeysPage() {
 
   const loadApiKeys = async () => {
     try {
-      setInitialLoading(true)
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api-keys`, {
         method: 'GET',
         headers: {
@@ -174,8 +172,6 @@ export default function ApiKeysPage() {
     } catch (error) {
       console.error('Failed to load API keys:', error)
       toast.error('Failed to load existing API keys')
-    } finally {
-      setInitialLoading(false)
     }
   }
 
@@ -398,15 +394,6 @@ export default function ApiKeysPage() {
     }
     
     return <Chip label="Unknown" color="warning" size="small" />
-  }
-
-  if (initialLoading) {
-    return (
-      <Box sx={{ p: 4, maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography sx={{ mt: 2 }}>Loading API keys...</Typography>
-      </Box>
-    )
   }
 
   return (
