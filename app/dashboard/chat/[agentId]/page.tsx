@@ -31,12 +31,14 @@ interface ChatMessage {
   search_results?: SearchResult[];
   citations?: string[];
   raw_content?: string;
+  showDataSources?: boolean;
 }
 
 interface Agent {
   id: string;
   name: string;
   avatar: string;
+  avatar_base64?: string;
   description: string;
   instruction: string;
   welcomeMessage: string;
@@ -190,48 +192,57 @@ export default function ChatPage({
   const formatContent = (content: string, citations?: string[]) => {
     if (!content) return '';
     
-    return content
-      .split('\n')
-      .map(line => {
-        // Format titles (lines starting with ###)
-        if (line.startsWith('###')) {
-          return `<h3 class="text-xl font-bold my-4">${line.replace('###', '').trim()}</h3>`;
-        }
-        // Format bold text (wrapped in **)
-        line = line.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>');
+    // Split content into paragraphs
+    const paragraphs = content.split('\n\n');
+    
+    return paragraphs
+      .map(paragraph => {
+        // Skip empty paragraphs
+        if (!paragraph.trim()) return '';
         
-        // Format download links - matches both [Download filename](/path) and [Download filename](/path)
-        const downloadMatch = line.match(/\[Download ([^\]]+)\](?:\(|\[)([^\)]+)(?:\)|\])/);
-        if (downloadMatch) {
-          const [fullMatch, filename, url] = downloadMatch;
-          // Extract file_id or filename from the url (e.g., /download/17_generated_7b99235.pdf)
-          // You may need to adjust this regex if your file_id format changes
-          const fileIdMatch = url.match(/\/download\/([^\/]+)/);
-          const fileId = fileIdMatch ? fileIdMatch[1] : url;
-          // Construct the correct API endpoint
-          const downloadApiUrl = `https://app.finiite.com/demo/api/chat/download/${fileId}`;
-          // Return only the anchor tag, no extra whitespace or block elements
-          return line.replace(
-            fullMatch,
-            `<a href="javascript:void(0)" class="text-blue-600 hover:underline flex items-center gap-1" onclick="window.downloadFile('${downloadApiUrl}', '${filename}')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Download ${filename}</a>`
-          );
-        }
-        
-        // Format citation numbers [n] as links if citations exist
-        if (citations?.length) {
-          line = line.replace(/\[(\d+)\]/g, (match, num) => {
-            const index = parseInt(num) - 1;
-            if (citations[index]) {
-              return `<a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">[${num}]</a>`;
+        const lines = paragraph.split('\n');
+        return lines
+          .map(line => {
+            // Format titles (lines starting with ###)
+            if (line.startsWith('###')) {
+              return `<h3>${line.replace('###', '').trim()}</h3>`;
             }
-            return match;
-          });
-        }
-        
-        return line.trim(); // Remove whitespace-only lines
+
+            // Format bold text (wrapped in **)
+            line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Format download links
+            const downloadMatch = line.match(/\[Download ([^\]]+)\](?:\(|\[)([^\)]+)(?:\)|\])/);
+            if (downloadMatch) {
+              const [fullMatch, filename, url] = downloadMatch;
+              const fileIdMatch = url.match(/\/download\/([^\/]+)/);
+              const fileId = fileIdMatch ? fileIdMatch[1] : url;
+              const downloadApiUrl = `https://app.finiite.com/demo/api/chat/download/${fileId}`;
+              return line.replace(
+                fullMatch,
+                `<a href="javascript:void(0)" class="text-blue-600 hover:underline flex items-center gap-1" onclick="window.downloadFile('${downloadApiUrl}', '${filename}')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Download ${filename}</a>`
+              );
+            }
+            
+            // Format citation numbers [n]
+            if (citations?.length) {
+              line = line.replace(/\[(\d+)\]/g, (match, num) => {
+                const index = parseInt(num) - 1;
+                if (citations[index]) {
+                  return `<a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">[${num}]</a>`;
+                }
+                return match;
+              });
+            }
+            
+            return line.trim();
+          })
+          .filter(line => line.length > 0)
+          .join('<br />'); // Join lines within a paragraph with line breaks
       })
-      .filter(line => line.length > 0) // Remove empty lines
-      .join(''); // Remove newlines between elements
+      .filter(para => para.length > 0)
+      .map(para => `<p>${para}</p>`) // Wrap each paragraph in a <p> tag
+      .join(''); // Join paragraphs
   };
 
   // Add the download file helper function
@@ -286,6 +297,9 @@ export default function ChatPage({
     // Strip HTML tags from the message
     const strippedMessage = message.replace(/<[^>]*>/g, '');
     
+    // Check if the message is asking about data sources or information
+    const isDataSourceQuery = /data\s*sources?|information|reference|source|documentation/i.test(strippedMessage);
+    
     const formData = new FormData();
     formData.append('content', strippedMessage);
     formData.append('model', selectedModel);
@@ -301,7 +315,8 @@ export default function ChatPage({
       content: strippedMessage,
       model: selectedModel,
       files: files || [],
-      attachments: []
+      attachments: [],
+      showDataSources: isDataSourceQuery
     };
     
     const updatedHistory = [...chatHistory, newMessage];
@@ -331,7 +346,8 @@ export default function ChatPage({
         ...assistantResponse,
         raw_content: assistantResponse.content, // Store the raw content
         content: formatContent(assistantResponse.content), // Store the formatted content
-        model: selectedModel
+        model: selectedModel,
+        showDataSources: isDataSourceQuery // Inherit the showDataSources flag from the user message
       };
 
       setChatHistory([...updatedHistory, assistantMessage]);
@@ -342,7 +358,8 @@ export default function ChatPage({
       const errorMessage: ChatMessage = {
         role: "assistant",
         content: "An error occurred while processing your request. Please try again later.",
-        model: selectedModel
+        model: selectedModel,
+        showDataSources: false
       };
       setChatHistory([...updatedHistory, errorMessage]);
       
@@ -483,9 +500,12 @@ export default function ChatPage({
           key={index}
           className="self-end bg-gray-100 p-4 rounded-2xl max-w-[60%]"
         >
-          <div className="text-gray-800">
-            {msg.content}
-          </div>
+          <div
+            className="text-gray-800"
+            dangerouslySetInnerHTML={{
+              __html: msg.content
+            }}
+          />
           {((msg.files?.length ?? 0) > 0 || (msg.attachments?.length ?? 0) > 0) && (
             <div className="mt-2 space-y-1">
               {msg.files?.map((file, i) => (
@@ -510,8 +530,8 @@ export default function ChatPage({
         </div>
       );
     } else {
-      // Only show sources button for web search messages (model === "sonar")
-      const isWebSearch = msg.model === "sonar";
+      // Show sources button for web search messages or when showDataSources is true
+      const shouldShowSources = msg.model === "sonar" || msg.showDataSources;
 
       return (
         <div key={index} className="flex gap-4 max-w-[80%]">
@@ -525,12 +545,12 @@ export default function ChatPage({
             <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm">
               <div className="space-y-4">
                 <div
-                  className="prose prose-sm whitespace-pre-wrap break-words"
+                  className="prose prose-sm max-w-none whitespace-pre-wrap break-words [&>p]:mb-4 [&>h3]:text-xl [&>h3]:font-bold [&>h3]:my-4"
                   dangerouslySetInnerHTML={{
                     __html: msg.content
                   }}
                 />
-                {isWebSearch && (
+                {shouldShowSources && (
                   <Sheet>
                     <SheetTrigger asChild>
                       <Button 
@@ -612,7 +632,7 @@ export default function ChatPage({
               {agent?.description || "Loading agent description..."}
             </p>
             <p className="text-gray-500 text-center max-w-[600px]">
-              {agent?.welcome_message || "Hello! How can I help you today?"}
+              {agent?.welcomeMessage || "Hello! How can I help you today?"}
             </p>
           </div>
 

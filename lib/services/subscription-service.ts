@@ -1,8 +1,21 @@
-import { PlanType } from '@/types/subscription';
+export interface SubscriptionResponse {
+  id: number;
+  user_id: number;
+  stripe_customer_id: string;
+  stripe_subscription_id: string;
+  plan_type: 'INDIVIDUAL' | 'STANDARD' | 'SMB';
+  status: string;
+  trial_end: string;
+  current_period_end: string;
+  seats: number;
+  cancel_at_period_end: boolean;
+}
 
 export interface SubscriptionCreate {
-  plan_type: PlanType;
+  plan_type: 'INDIVIDUAL' | 'STANDARD' | 'SMB';
   seats: number;
+  payment_method_id: string;
+  is_annual: boolean;
 }
 
 export interface SubscriptionUpdate {
@@ -10,38 +23,20 @@ export interface SubscriptionUpdate {
   cancel_at_period_end?: boolean;
 }
 
-export interface SubscriptionResponse {
-  id: number;
-  user_id: number;
-  stripe_customer_id: string;
-  stripe_subscription_id: string;
-  plan_type: PlanType;
-  status: string;
-  trial_end: string;
-  current_period_end: string;
-  seats: number;
-  cancel_at_period_end?: boolean;
-}
-
 export class SubscriptionService {
-  private static API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-  static async createSubscription(
-    subscriptionData: SubscriptionCreate,
-    paymentMethodId: string,
-    isAnnual: boolean
-  ): Promise<SubscriptionResponse> {
+  static async createSubscription(data: SubscriptionCreate, accessToken: string): Promise<SubscriptionResponse> {
     try {
-      const response = await fetch(`${this.API_URL}/subscription`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscription`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
-        credentials: 'include',
         body: JSON.stringify({
-          ...subscriptionData,
-          payment_method_id: paymentMethodId,
-          is_annual: isAnnual,
+          plan_type: data.plan_type,
+          seats: data.seats,
+          payment_method_id: data.payment_method_id,
+          is_annual: data.is_annual
         }),
       });
 
@@ -57,17 +52,22 @@ export class SubscriptionService {
     }
   }
 
-  static async getCurrentSubscription(): Promise<SubscriptionResponse | null> {
+  static async getCurrentSubscription(accessToken: string): Promise<SubscriptionResponse | null> {
     try {
-      const response = await fetch(`${this.API_URL}/subscription`, {
-        credentials: 'include',
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscription`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
       });
 
+      if (response.status === 404) {
+        return null;
+      }
+
       if (!response.ok) {
-        if (response.status === 404) {
-          return null;
-        }
-        throw new Error('Failed to fetch subscription');
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to fetch subscription');
       }
 
       return response.json();
@@ -77,17 +77,15 @@ export class SubscriptionService {
     }
   }
 
-  static async updateSubscription(
-    subscriptionData: SubscriptionUpdate
-  ): Promise<SubscriptionResponse> {
+  static async updateSubscription(data: SubscriptionUpdate, accessToken: string): Promise<SubscriptionResponse> {
     try {
-      const response = await fetch(`${this.API_URL}/subscription`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscription`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
-        credentials: 'include',
-        body: JSON.stringify(subscriptionData),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
@@ -98,6 +96,26 @@ export class SubscriptionService {
       return response.json();
     } catch (error) {
       console.error('Error updating subscription:', error);
+      throw error;
+    }
+  }
+
+  static async handleWebhook(signature: string, payload: any): Promise<void> {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscription/webhook`, {
+        method: 'POST',
+        headers: {
+          'stripe-signature': signature,
+        },
+        body: payload,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to process webhook');
+      }
+    } catch (error) {
+      console.error('Error processing webhook:', error);
       throw error;
     }
   }

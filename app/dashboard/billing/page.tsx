@@ -1,17 +1,19 @@
 "use client"
-import { Box, Typography, Button, ToggleButton, ToggleButtonGroup, Card } from '@mui/material'
+import { Box, Typography, Button, ToggleButton, ToggleButtonGroup, Card, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import CheckIcon from '@mui/icons-material/Check'
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { SubscriptionService, SubscriptionResponse } from '@/lib/services/subscription-service'
-import { PlanType, PLAN_PRICES } from '@/types/subscription'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { SubscriptionService, SubscriptionResponse, SubscriptionCreate } from '@/lib/services/subscription-service'
 
 // Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
+// Styled Components
 const PlanCard = styled(Card)(({ theme }) => ({
   padding: theme.spacing(4),
   height: '100%',
@@ -96,145 +98,241 @@ const StyledToggleButtonGroup = styled(ToggleButtonGroup)(({ theme }) => ({
   }
 }))
 
-function CheckoutForm({ planType, seats, isAnnual, onSuccess }: { 
-  planType: PlanType, 
-  seats: number, 
-  isAnnual: boolean,
-  onSuccess: () => void 
-}) {
+const PaymentDialog = styled(Dialog)(({ theme }) => ({
+  '& .MuiDialog-paper': {
+    width: '100%',
+    maxWidth: 500,
+    padding: theme.spacing(2),
+  },
+}))
+
+const PaymentButton = styled(Button)(({ theme }) => ({
+  marginTop: theme.spacing(2),
+  height: 48,
+  backgroundColor: '#14234B',
+  color: 'white',
+  '&:hover': {
+    backgroundColor: '#1A2B5C',
+  },
+  '&.Mui-disabled': {
+    backgroundColor: '#9FB5F1',
+    color: 'white',
+  },
+}))
+
+type PlanType = 'INDIVIDUAL' | 'STANDARD' | 'SMB' | 'ENTERPRISE';
+
+interface Plan {
+  name: PlanType;
+  price: number | string;
+  seats?: number;
+  seatPrice?: number;
+  features: Array<{
+    text: string;
+    bold: string[];
+  }>;
+}
+
+interface PaymentFormProps {
+  planType: Exclude<PlanType, 'ENTERPRISE'>;
+  seats: number;
+  isAnnual: boolean;
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+// Payment Form Component
+function PaymentForm({ planType, seats, isAnnual, onSuccess, onCancel }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
 
     setProcessing(true);
     setError(null);
 
     try {
-      const { paymentMethod, error: pmError } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: elements.getElement(PaymentElement)!,
+      const { error: confirmError } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/dashboard/billing/success`,
+        },
       });
 
-      if (pmError) {
-        throw pmError;
+      if (confirmError) {
+        throw new Error(confirmError.message);
       }
-
-      await SubscriptionService.createSubscription(
-        {
-          plan_type: planType,
-          seats: seats,
-        },
-        paymentMethod.id,
-        isAnnual
-      );
-
-      toast.success('Subscription created successfully!');
-      onSuccess();
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
-      toast.error(err.message || 'Failed to create subscription');
-    } finally {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errorMessage);
+      toast.error(errorMessage);
       setProcessing(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <PaymentElement />
+      <PaymentElement options={{
+        layout: 'tabs',
+      }} />
       {error && (
         <Typography color="error" sx={{ mt: 2 }}>
           {error}
         </Typography>
       )}
-      <Button
-        type="submit"
-        variant="contained"
-        fullWidth
-        disabled={!stripe || processing}
-        sx={{ mt: 2 }}
-      >
-        {processing ? 'Processing...' : 'Subscribe'}
-      </Button>
+      <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+        <PaymentButton
+          type="button"
+          variant="outlined"
+          onClick={onCancel}
+          disabled={processing}
+        >
+          Cancel
+        </PaymentButton>
+        <PaymentButton
+          type="submit"
+          variant="contained"
+          disabled={!stripe || !elements || processing}
+        >
+          {processing ? <CircularProgress size={24} /> : 'Subscribe'}
+        </PaymentButton>
+      </Box>
     </form>
   );
 }
 
+// Main Billing Page Component
 export default function BillingPage() {
-  const [billingPeriod, setBillingPeriod] = useState('annually')
-  const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null)
-  const [selectedPlan, setSelectedPlan] = useState<{
-    type: PlanType;
-    seats: number;
-  } | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: session } = useSession();
+  const router = useRouter();
+  const [billingPeriod, setBillingPeriod] = useState('annually');
+  const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [selectedSeats, setSelectedSeats] = useState(1);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [loadingPayment, setLoadingPayment] = useState(false);
 
   useEffect(() => {
-    loadSubscription()
-  }, [])
+    const loadSubscription = async () => {
+      const accessToken = session?.user?.accessToken;
+      if (!accessToken || typeof accessToken !== 'string') return;
 
-  const loadSubscription = async () => {
-    try {
-      const sub = await SubscriptionService.getCurrentSubscription()
-      setSubscription(sub)
-    } catch (error) {
-      console.error('Error loading subscription:', error)
-      toast.error('Failed to load subscription details')
-    } finally {
-      setLoading(false)
-    }
-  }
+      try {
+        const sub = await SubscriptionService.getCurrentSubscription(accessToken);
+        setSubscription(sub);
+      } catch (error) {
+        console.error('Error loading subscription:', error);
+        toast.error('Failed to load subscription details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSubscription();
+  }, [session]);
 
   const handleBillingPeriodChange = (event: React.MouseEvent<HTMLElement>, newPeriod: string) => {
     if (newPeriod !== null) {
-      setBillingPeriod(newPeriod)
+      setBillingPeriod(newPeriod);
     }
-  }
+  };
 
-  const handleSelectPlan = (planType: PlanType, seats: number) => {
-    setSelectedPlan({ type: planType, seats })
-  }
+  const handleSelectPlan = async (plan: Plan) => {
+    if (plan.name === 'ENTERPRISE') {
+      router.push('/contact-sales');
+      return;
+    }
+    setSelectedPlan(plan);
+    setSelectedSeats(plan.seats || 1);
+    setLoadingPayment(true);
+    setPaymentDialogOpen(true);
+
+    try {
+      const response = await fetch('/api/stripe/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          planType: plan.name,
+          seats: plan.seats || 1,
+          isAnnual: billingPeriod === 'annually',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create payment intent');
+      }
+
+      const data = await response.json();
+      setClientSecret(data.clientSecret);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      toast.error(errorMessage);
+      setPaymentDialogOpen(false);
+    } finally {
+      setLoadingPayment(false);
+    }
+  };
 
   const handleUpdateSeats = async (newSeats: number) => {
+    const accessToken = session?.user?.accessToken;
+    if (!accessToken || typeof accessToken !== 'string') return;
+
     try {
-      await SubscriptionService.updateSubscription({ seats: newSeats })
-      await loadSubscription()
-      toast.success('Seats updated successfully')
+      const updatedSub = await SubscriptionService.updateSubscription({
+        seats: newSeats,
+      }, accessToken);
+      setSubscription(updatedSub);
+      toast.success('Seats updated successfully!');
     } catch (error) {
-      toast.error('Failed to update seats')
+      console.error('Error updating seats:', error);
+      toast.error('Failed to update seats');
     }
-  }
+  };
 
   const handleCancelSubscription = async () => {
+    const accessToken = session?.user?.accessToken;
+    if (!accessToken || typeof accessToken !== 'string') return;
+
     try {
-      await SubscriptionService.updateSubscription({ cancel_at_period_end: true })
-      await loadSubscription()
-      toast.success('Subscription will be cancelled at the end of the billing period')
+      const updatedSub = await SubscriptionService.updateSubscription({
+        cancel_at_period_end: true,
+      }, accessToken);
+      setSubscription(updatedSub);
+      toast.success('Subscription will be cancelled at the end of the billing period');
     } catch (error) {
-      toast.error('Failed to cancel subscription')
+      console.error('Error cancelling subscription:', error);
+      toast.error('Failed to cancel subscription');
     }
-  }
+  };
 
   const handleResumeSubscription = async () => {
-    try {
-      await SubscriptionService.updateSubscription({ cancel_at_period_end: false })
-      await loadSubscription()
-      toast.success('Subscription resumed successfully')
-    } catch (error) {
-      toast.error('Failed to resume subscription')
-    }
-  }
+    const accessToken = session?.user?.accessToken;
+    if (!accessToken || typeof accessToken !== 'string') return;
 
-  const plans = [
+    try {
+      const updatedSub = await SubscriptionService.updateSubscription({
+        cancel_at_period_end: false,
+      }, accessToken);
+      setSubscription(updatedSub);
+      toast.success('Subscription resumed successfully!');
+    } catch (error) {
+      console.error('Error resuming subscription:', error);
+      toast.error('Failed to resume subscription');
+    }
+  };
+
+  const plans: Plan[] = [
     {
-      name: 'Individual',
+      name: 'INDIVIDUAL',
       price: billingPeriod === 'annually' ? 29 : 39,
       seats: 1,
       seatPrice: 7,
@@ -258,7 +356,7 @@ export default function BillingPage() {
       ]
     },
     {
-      name: 'Standard',
+      name: 'STANDARD',
       price: billingPeriod === 'annually' ? 74 : 99,
       seats: 2,
       seatPrice: 7,
@@ -318,7 +416,7 @@ export default function BillingPage() {
       ]
     },
     {
-      name: 'Enterprise',
+      name: 'ENTERPRISE',
       price: 'Custom plan',
       features: [
         {
@@ -343,9 +441,8 @@ export default function BillingPage() {
         }
       ]
     }
-  ]
+  ];
 
-  // Helper function to render text with bold parts
   const renderFeatureText = (feature: { text: string, bold: string[] }) => {
     if (feature.bold.length === 0) return feature.text;
 
@@ -367,48 +464,30 @@ export default function BillingPage() {
     <Box sx={{ p: 4, maxWidth: '1800px', margin: '0 auto' }}>
       <Typography variant="h4" sx={{ mb: 1 }}>Billing</Typography>
       
-      {loading ? (
-        <Typography>Loading...</Typography>
-      ) : subscription ? (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6">Current Subscription</Typography>
-          <Typography>Plan: {subscription.plan_type}</Typography>
-          <Typography>Status: {subscription.status}</Typography>
-          <Typography>Seats: {subscription.seats}</Typography>
+      {subscription?.status === 'trialing' && (
+        <Box sx={{ mb: 4, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
           <Typography>
-            Current Period Ends: {new Date(subscription.current_period_end).toLocaleDateString()}
+            You are currently in a trial period that ends on {new Date(subscription.trial_end!).toLocaleDateString()}
           </Typography>
-          {subscription.trial_end && (
-            <Typography>
-              Trial Ends: {new Date(subscription.trial_end).toLocaleDateString()}
-            </Typography>
-          )}
-          {subscription.cancel_at_period_end ? (
-            <>
-              <Typography color="error">
-                Your subscription will be cancelled at the end of the current period
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={handleResumeSubscription}
-                sx={{ mt: 2 }}
-              >
-                Resume Subscription
-              </Button>
-            </>
-          ) : (
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={handleCancelSubscription}
-              sx={{ mt: 2 }}
-            >
-              Cancel Subscription
-            </Button>
-          )}
         </Box>
-      ) : null}
+      )}
 
+      {subscription?.cancel_at_period_end && (
+        <Box sx={{ mb: 4, p: 2, bgcolor: 'warning.light', borderRadius: 1 }}>
+          <Typography>
+            Your subscription will be cancelled on {new Date(subscription.current_period_end).toLocaleDateString()}
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleResumeSubscription}
+              sx={{ ml: 2 }}
+            >
+              Resume Subscription
+            </Button>
+          </Typography>
+        </Box>
+      )}
+      
       <Box sx={{ textAlign: 'center', mb: 6 }}>
         <Typography variant="h4" sx={{ mb: 3 }}>
           Plans for Startups to Fortune 500 Enterprises.
@@ -441,9 +520,7 @@ export default function BillingPage() {
               </BestValueLabel>
             )}
             
-            <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', textAlign: 'center' }}>
-              {plan.name}
-            </Typography>
+            <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', textAlign: 'center' }}>{plan.name}</Typography>
             
             <Typography variant="h4" sx={{ mb: 3 }}>
               {typeof plan.price === 'number' ? (
@@ -458,43 +535,60 @@ export default function BillingPage() {
               )}
             </Typography>
 
-            {plan.name === 'Enterprise' ? (
+            {subscription && subscription.plan_type === plan.name ? (
+              <>
+                <Typography variant="body1" sx={{ mb: 2, color: 'success.main' }}>
+                  Current Plan
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="error"
+                  fullWidth
+                  onClick={handleCancelSubscription}
+                  sx={{ mb: 2 }}
+                >
+                  Cancel Subscription
+                </Button>
+              </>
+            ) : plan.name === 'ENTERPRISE' ? (
               <ContactSalesButton 
                 variant="contained"
                 fullWidth
-                href="mailto:sales@finiite.ai"
+                onClick={() => router.push('/contact-sales')}
               >
-                contact sales
+                Contact Sales
               </ContactSalesButton>
             ) : (
               <SelectButton 
                 variant="contained"
                 fullWidth
-                onClick={() => handleSelectPlan(
-                  PlanType[plan.name.toUpperCase() as keyof typeof PlanType],
-                  plan.seats
-                )}
+                onClick={() => handleSelectPlan(plan)}
+                disabled={loading}
               >
-                {subscription?.plan_type === plan.name.toUpperCase() ? 'Current Plan' : 'Select'}
+                {loading ? <CircularProgress size={24} /> : 'Select'}
               </SelectButton>
             )}
 
-            {plan.seats && subscription?.plan_type === plan.name.toUpperCase() && (
+            {plan.seats && (
               <>
                 <Typography variant="body2" sx={{ mt: 1 }}>
-                  {plan.seats} {plan.seats === 1 ? 'seat' : 'seats'} included
+                  {subscription && subscription.plan_type === plan.name
+                    ? `${subscription.seats} seats in use`
+                    : `${plan.seats} ${plan.seats === 1 ? 'seat' : 'seats'} included`}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   add more seats at ${plan.seatPrice}/user/month
                 </Typography>
-                <AddSeatsButton 
-                  variant="outlined" 
-                  fullWidth 
-                  sx={{ mb: 3 }}
-                  onClick={() => handleUpdateSeats(subscription.seats + 1)}
-                >
-                  add seats
-                </AddSeatsButton>
+                {subscription && subscription.plan_type === plan.name && (
+                  <AddSeatsButton
+                    variant="outlined"
+                    fullWidth
+                    sx={{ mb: 3 }}
+                    onClick={() => handleUpdateSeats(subscription.seats + 1)}
+                  >
+                    Add Seat
+                  </AddSeatsButton>
+                )}
               </>
             )}
 
@@ -508,41 +602,73 @@ export default function BillingPage() {
         ))}
       </Box>
 
-      {selectedPlan && (
-        <Elements stripe={stripePromise}>
-          <Box sx={{ 
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            bgcolor: 'background.paper',
-            boxShadow: 24,
-            p: 4,
-            maxWidth: 400,
-            width: '100%',
-            borderRadius: 2,
-          }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Subscribe to {selectedPlan.type}
-            </Typography>
-            <CheckoutForm
-              planType={selectedPlan.type}
-              seats={selectedPlan.seats}
-              isAnnual={billingPeriod === 'annually'}
-              onSuccess={() => {
-                setSelectedPlan(null)
-                loadSubscription()
+      <PaymentDialog
+        open={paymentDialogOpen}
+        onClose={() => {
+          setPaymentDialogOpen(false);
+          setClientSecret(null);
+        }}
+      >
+        <DialogTitle>Subscribe to {selectedPlan?.name}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            {billingPeriod === 'annually'
+              ? `You will be charged $${selectedPlan?.price} annually`
+              : `You will be charged $${selectedPlan?.price} monthly`}
+          </Typography>
+          {loadingPayment ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : selectedPlan && selectedPlan.name !== 'ENTERPRISE' && clientSecret ? (
+            <Elements
+              stripe={stripePromise}
+              options={{
+                clientSecret,
+                appearance: {
+                  theme: 'stripe',
+                  variables: {
+                    colorPrimary: '#14234B',
+                    colorBackground: '#ffffff',
+                    colorText: '#14234B',
+                    fontFamily: 'Inter, sans-serif',
+                  }
+                }
               }}
-            />
-            <Button
-              onClick={() => setSelectedPlan(null)}
-              sx={{ mt: 2 }}
             >
-              Cancel
-            </Button>
-          </Box>
-        </Elements>
-      )}
+              <PaymentForm
+                planType={selectedPlan.name}
+                seats={selectedSeats}
+                isAnnual={billingPeriod === 'annually'}
+                onSuccess={() => {
+                  setPaymentDialogOpen(false);
+                  setClientSecret(null);
+                  const accessToken = session?.user?.accessToken;
+                  if (accessToken && typeof accessToken === 'string') {
+                    SubscriptionService.getCurrentSubscription(accessToken)
+                      .then(setSubscription)
+                      .catch(error => {
+                        console.error('Error refreshing subscription:', error);
+                        toast.error('Failed to refresh subscription details');
+                      });
+                  }
+                }}
+                onCancel={() => {
+                  setPaymentDialogOpen(false);
+                  setClientSecret(null);
+                }}
+              />
+            </Elements>
+          ) : null}
+        </DialogContent>
+      </PaymentDialog>
     </Box>
-  )
-} 
+  );
+}
+
+// Helper function to calculate amount in cents
+function calculateAmount(price: number | string, isAnnual: boolean, seats: number): number {
+  if (typeof price !== 'number') return 0;
+  const baseAmount = isAnnual ? price * 12 : price;
+  return Math.round(baseAmount * 100); // Convert to cents
+}
