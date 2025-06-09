@@ -181,6 +181,22 @@ export default function ModelsPage() {
               ))}
           </Select>
         </FormControl>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+          <Button
+            variant="contained"
+            onClick={() => setCustomModelDialogOpen(true)}
+            sx={{
+              bgcolor: 'black',
+              color: 'white',
+              '&:hover': {
+                bgcolor: 'black',
+                opacity: 0.9,
+              },
+            }}
+          >
+            Add custom model
+          </Button>
+        </Box>
       </Box>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 3, mb: 6 }}>
