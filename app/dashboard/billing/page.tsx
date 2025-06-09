@@ -554,7 +554,7 @@ export default function BillingPage() {
               <ContactSalesButton 
                 variant="contained"
                 fullWidth
-                onClick={() => router.push('/contact-sales')}
+                onClick={() => window.open('https://tidycal.com/fatima-awan/finiite-ai-demo', '_blank')}
               >
                 Contact Sales
               </ContactSalesButton>
