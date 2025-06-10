@@ -3,6 +3,8 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { toast } from "sonner"
+
 interface ChatMessage {
   role: string
   content: string
@@ -29,6 +31,7 @@ export default function ChatHistoryPage() {
   const [agentNames, setAgentNames] = useState<Record<string, string>>({})
   const { data: session } = useSession()
   const [isLoading, setIsLoading] = useState(true)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (!session?.user.accessToken) return;
@@ -127,7 +130,7 @@ export default function ChatHistoryPage() {
 
   const handleExport = () => {
     if (selectedChats.length === 0) {
-      alert("Please select at least one chat to export")
+      toast.error("Please select at least one chat to export")
       return
     }
 
@@ -157,6 +160,60 @@ export default function ChatHistoryPage() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    
+    toast.success("Chat history exported successfully")
+  }
+
+  const handleDelete = async () => {
+    if (selectedChats.length === 0) {
+      toast.error("Please select at least one chat to delete")
+      return
+    }
+
+    if (!session?.user?.accessToken) {
+      toast.error("Authentication error. Please try logging in again.")
+      return;
+    }
+
+    toast.promise(
+      // Promise
+      (async () => {
+        setIsDeleting(true)
+        try {
+          // Delete each selected chat history
+          await Promise.all(selectedChats.map(async (chatId) => {
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/chat/${chatId}/history`,
+              {
+                method: 'DELETE',
+                headers: {
+                  Authorization: `Bearer ${session.user.accessToken}`,
+                },
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(`Failed to delete chat history for agent ${chatId}`);
+            }
+          }));
+
+          // Remove deleted chats from the state
+          setChatLogs(prev => prev.filter(chat => !selectedChats.includes(chat.id)))
+          setSelectedChats([])
+          return "Successfully deleted selected chat histories"
+        } catch (error) {
+          console.error('Error deleting chat histories:', error)
+          throw new Error('Failed to delete some chat histories')
+        } finally {
+          setIsDeleting(false)
+        }
+      })(),
+      {
+        loading: 'Deleting selected chat histories...',
+        success: (data) => data,
+        error: (err) => err.message
+      }
+    )
   }
 
   return (
@@ -166,18 +223,43 @@ export default function ChatHistoryPage() {
           <h1 className="text-2xl font-bold">Chat History</h1>
           <p className="text-gray-500">Access old chat logs</p>
         </div>
-        <Button 
-          variant="outline" 
-          className="gap-2"
-          onClick={handleExport}
-          disabled={selectedChats.length === 0}
-        >
-          <span>Export</span>
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M7.5 1.5v8M4.5 6.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M3 9v3h9V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="destructive" 
+            className="gap-2"
+            onClick={handleDelete}
+            disabled={selectedChats.length === 0 || isDeleting}
+          >
+            {isDeleting ? (
+              <>
+                <span>Deleting...</span>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              </>
+            ) : (
+              <>
+                <span>Delete</span>
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5.5 1C5.22386 1 5 1.22386 5 1.5C5 1.77614 5.22386 2 5.5 2H9.5C9.77614 2 10 1.77614 10 1.5C10 1.22386 9.77614 1 9.5 1H5.5ZM3 3.5C3 3.22386 3.22386 3 3.5 3H11.5C11.7761 3 12 3.22386 12 3.5C12 3.77614 11.7761 4 11.5 4H3.5C3.22386 4 3 3.77614 3 3.5ZM3 5.5C3 5.22386 3.22386 5 3.5 5H11.5C11.7761 5 12 5.22386 12 5.5C12 5.77614 11.7761 6 11.5 6H3.5C3.22386 6 3 5.77614 3 5.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                </svg>
+              </>
+            )}
+          </Button>
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={handleExport}
+            disabled={selectedChats.length === 0}
+          >
+            <span>Export</span>
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7.5 1.5v8M4.5 6.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3 9v3h9V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </Button>
+        </div>
       </div> 
 
       <div className="bg-[#F8F9FC] rounded-lg p-4">

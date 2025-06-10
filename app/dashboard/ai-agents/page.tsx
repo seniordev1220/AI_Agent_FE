@@ -29,20 +29,28 @@ export default function AIAgentsPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
   const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo")
+  const [inputMessage, setInputMessage] = useState("")
   const { data: session } = useSession()
 
   useEffect(() => {
     if (!session) return;
     // Load agents from localStorage on component mount
     const loadAgents = async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
-        headers: {
-          'Authorization': `Bearer ${session.user.accessToken}`,
-        },
-      })
-      const data = await response.json()
-      console.log(data)
-      setAgents(data)
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+          headers: {
+            'Authorization': `Bearer ${session.user.accessToken}`,
+          },
+        })
+        if (!response.ok) {
+          throw new Error('Failed to load agents');
+        }
+        const data = await response.json()
+        setAgents(data)
+      } catch (error) {
+        toast.error('Failed to load agents');
+        console.error('Error loading agents:', error);
+      }
     }
 
     loadAgents()
@@ -56,6 +64,11 @@ export default function AIAgentsPage() {
   const handleSendMessage = async (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string) => {
     if (!selectedAgent || !session) {
       toast.error('Please select an agent first');
+      return;
+    }
+
+    if (!message.trim()) {
+      toast.error('Please enter a message');
       return;
     }
 
@@ -99,6 +112,7 @@ export default function AIAgentsPage() {
 
   const handleAgentClick = (agent: Agent) => {
     setSelectedAgent(agent);
+    toast.success(`Selected agent: ${agent.name}`);
     // Focus the message input after selecting an agent
     const messageInput = document.querySelector('[contenteditable="true"]') as HTMLElement;
     if (messageInput) {
@@ -121,7 +135,11 @@ export default function AIAgentsPage() {
       <div className="flex flex-col h-[68vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Your AI Agents</h2>
-          <Button variant="link" className="text-gray-600">
+          <Button 
+            variant="link" 
+            className="text-gray-600"
+            onClick={() => router.push('/dashboard/my-agents')}
+          >
             View all ({agents.length})
           </Button>
         </div>
@@ -164,10 +182,18 @@ export default function AIAgentsPage() {
                   Chatting with: {selectedAgent.name}
                 </p>
               </div>
-            ) : null}
-            <MessageInput
-              onSend={handleSendMessage}
-            />
+            ) : (
+              <div className="mb-2 px-2">
+                <p className="text-sm text-gray-500">
+                  Select an agent to start chatting
+                </p>
+              </div>
+            )}
+            <div className={!selectedAgent ? 'opacity-50 pointer-events-none' : ''}>
+              <MessageInput
+                onSend={handleSendMessage}
+              />
+            </div>
           </div>
         </div>
       </div>

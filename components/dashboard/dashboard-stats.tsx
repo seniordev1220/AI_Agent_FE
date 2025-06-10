@@ -176,7 +176,7 @@ export function DashboardStats() {
               </div>
             )}
           </div>
-          <a href="#" className="text-blue-500 mt-auto">View More</a>
+          <a href="https://app.finiite.com/dashboard/my-agents" className="text-blue-500 mt-auto">View More</a>
         </div>
 
         {/* Users */}
@@ -189,7 +189,7 @@ export function DashboardStats() {
               </div>
             )}
           </div>
-          <a href="#" className="text-blue-500 mt-auto">View More</a>
+          <a href="https://app.finiite.com/dashboard/invite" className="text-blue-500 mt-auto">View More</a>
         </div>
 
         {/* Token Usage */}
@@ -202,7 +202,6 @@ export function DashboardStats() {
               </div>
             )}
           </div>
-          <a href="#" className="text-blue-500 mt-auto">View More</a>
         </div>
 
         {/* Message Activity */}
@@ -215,7 +214,6 @@ export function DashboardStats() {
               </div>
             )}
           </div>
-          <a href="#" className="text-blue-500 mt-auto">View More</a>
         </div>
       </div>
 

@@ -312,15 +312,6 @@ export function MessageInput({ onSend, onWebSearch }: MessageInputProps) {
                 >
                   <Italic className="h-4 w-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={toggleCode}
-                  className={`p-1.5 hover:bg-gray-100 rounded-md ${
-                    editor?.isActive('code') ? 'bg-gray-100 text-black' : 'text-gray-500'
-                  }`}
-                >
-                  <Code className="h-4 w-4" />
-                </button>
                 <div className="w-px h-4 bg-gray-200 mx-1" /> {/* Separator */}
                 <button
                   type="button"

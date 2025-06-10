@@ -149,7 +149,7 @@ export default function BillingPage() {
   const plans: Plan[] = [
     {
       name: 'Individual',
-      price: billingPeriod === 'annual' ? 29 : 39,
+      price: billingPeriod === 'annual' ? 348 : 39,
       seats: 1,
       seatPrice: 7,
       planType: 'individual',
@@ -174,7 +174,7 @@ export default function BillingPage() {
     },
     {
       name: 'Standard',
-      price: billingPeriod === 'annual' ? 74 : 99,
+      price: billingPeriod === 'annual' ? 888 : 99,
       seats: 2,
       seatPrice: 7,
       planType: 'standard',
@@ -203,7 +203,7 @@ export default function BillingPage() {
     },
     {
       name: 'SMB',
-      price: billingPeriod === 'annual' ? 118 : 157,
+      price: billingPeriod === 'annual' ? 1416 : 157,
       seats: 3,
       seatPrice: 5,
       planType: 'smb',
@@ -324,7 +324,7 @@ export default function BillingPage() {
                 <>
                   ${plan.price}
                   <Typography component="span" variant="body1" color="text.secondary">
-                    {' '}/ month
+                    {billingPeriod === 'annual' ? ' / year' : ' / month'}
                   </Typography>
                 </>
               ) : (
