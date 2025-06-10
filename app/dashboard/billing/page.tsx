@@ -1,5 +1,5 @@
 "use client"
-import { Box, Typography, Button, ToggleButton, ToggleButtonGroup, Card } from '@mui/material'
+import { Box, Typography, Button, ToggleButton, ToggleButtonGroup, Card, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import CheckIcon from '@mui/icons-material/Check'
 import { useState } from 'react'
@@ -105,7 +105,13 @@ interface Plan {
 
 export default function BillingPage() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual')
-  const [isLoading, setIsLoading] = useState(false)
+  const [loadingAction, setLoadingAction] = useState<{
+    type: 'select' | 'add_seats' | null;
+    planType: 'individual' | 'standard' | 'smb' | null;
+  }>({ type: null, planType: null })
+  const [openSeatsDialog, setOpenSeatsDialog] = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
+  const [additionalSeats, setAdditionalSeats] = useState(0)
 
   const handleBillingPeriodChange = (event: React.MouseEvent<HTMLElement>, newPeriod: string | null) => {
     if (newPeriod === 'annually') {
@@ -115,9 +121,22 @@ export default function BillingPage() {
     }
   }
 
-  const handleCheckout = async (planType: Exclude<PlanType, 'enterprise'>) => {
+  const handleOpenSeatsDialog = (plan: Plan) => {
+    setSelectedPlan(plan)
+    setAdditionalSeats(0)
+    setOpenSeatsDialog(true)
+  }
+
+  const handleCloseSeatsDialog = () => {
+    setOpenSeatsDialog(false)
+    setSelectedPlan(null)
+    setAdditionalSeats(0)
+  }
+
+  const handleCheckout = async (planType: 'individual' | 'standard' | 'smb', totalSeats?: number) => {
+    const actionType = totalSeats ? 'add_seats' : 'select';
     try {
-      setIsLoading(true);
+      setLoadingAction({ type: actionType, planType });
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment/create-checkout-session`, {
         method: 'POST',
         headers: {
@@ -126,7 +145,7 @@ export default function BillingPage() {
         body: JSON.stringify({
           plan_type: planType,
           billing_interval: billingPeriod,
-          quantity: 1,
+          seats: totalSeats || 1,
           success_url: `${window.location.origin}/payment/success`,
           cancel_url: `${window.location.origin}/dashboard/billing`
         }),
@@ -142,7 +161,7 @@ export default function BillingPage() {
       console.error('Error during checkout:', error);
       // You might want to show an error message to the user here
     } finally {
-      setIsLoading(false);
+      setLoadingAction({ type: null, planType: null });
     }
   };
 
@@ -337,8 +356,8 @@ export default function BillingPage() {
                 variant="contained"
                 fullWidth
                 href="https://tidycal.com/fatima-awan/finiite-ai-demo"
-                target="_blank"
-                rel="noopener noreferrer"
+                LinkComponent="a"
+                sx={{ textDecoration: 'none' }}
               >
                 contact sales
               </ContactSalesButton>
@@ -347,17 +366,17 @@ export default function BillingPage() {
                 variant="contained"
                 fullWidth
                 onClick={() => {
-                  if (plan.planType !== 'enterprise') {
+                  if (plan.planType === 'individual' || plan.planType === 'standard' || plan.planType === 'smb') {
                     handleCheckout(plan.planType);
                   }
                 }}
-                disabled={isLoading}
+                disabled={loadingAction.type === 'select' && loadingAction.planType === plan.planType}
               >
-                {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Select'}
+                {loadingAction.type === 'select' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'Select'}
               </SelectButton>
             )}
 
-            {plan.seats && (
+            {plan.seats && plan.planType !== 'enterprise' && (
               <>
                 <Typography variant="body2" sx={{ mt: 1 }}>
                   {plan.seats} {plan.seats === 1 ? 'seat' : 'seats'} included
@@ -365,8 +384,14 @@ export default function BillingPage() {
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   add more seats at ${plan.seatPrice}/user/month
                 </Typography>
-                <AddSeatsButton variant="outlined" fullWidth sx={{ mb: 3 }}>
-                  add seats
+                <AddSeatsButton 
+                  variant="outlined" 
+                  fullWidth 
+                  sx={{ mb: 3 }}
+                  onClick={() => handleOpenSeatsDialog(plan)}
+                  disabled={loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType}
+                >
+                  {loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'add seats'}
                 </AddSeatsButton>
               </>
             )}
@@ -380,6 +405,48 @@ export default function BillingPage() {
           </PlanCard>
         ))}
       </Box>
+
+      <Dialog open={openSeatsDialog} onClose={handleCloseSeatsDialog}>
+        <DialogTitle>Add Seats</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            {selectedPlan?.seats} seats included in the base plan.
+            Each additional seat costs ${selectedPlan?.seatPrice}/user/month.
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Additional Seats"
+            type="number"
+            fullWidth
+            value={additionalSeats}
+            onChange={(e) => setAdditionalSeats(Math.max(0, parseInt(e.target.value) || 0))}
+            inputProps={{ min: 0 }}
+          />
+          {additionalSeats > 0 && (
+            <Typography variant="body2" sx={{ mt: 2 }}>
+              Additional cost: ${(additionalSeats * (selectedPlan?.seatPrice || 0)).toFixed(2)}/month
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseSeatsDialog} color="inherit">
+            Cancel
+          </Button>
+          <Button 
+            onClick={() => {
+              if (selectedPlan && (selectedPlan.planType === 'individual' || selectedPlan.planType === 'standard' || selectedPlan.planType === 'smb')) {
+                handleCheckout(selectedPlan.planType, (selectedPlan.seats || 1) + additionalSeats);
+                handleCloseSeatsDialog();
+              }
+            }} 
+            variant="contained"
+            disabled={loadingAction.type === 'add_seats' && loadingAction.planType === selectedPlan?.planType}
+          >
+            {loadingAction.type === 'add_seats' && loadingAction.planType === selectedPlan?.planType ? <CircularProgress size={20} /> : 'Proceed to Checkout'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 } 
