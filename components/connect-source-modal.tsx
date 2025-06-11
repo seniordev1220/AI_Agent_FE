@@ -67,21 +67,43 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
         return [
           ...commonFields,
           { key: 'folder_id', label: 'Folder ID', type: 'text', 
-            placeholder: 'Google Drive Folder ID' },
-          { key: 'service_account_key', label: 'Service Account Key (JSON)', type: 'textarea',
+            placeholder: 'Google Drive Folder ID',
             required: true },
-          { key: 'token_path', label: 'Token Path', type: 'text',
-            placeholder: '/path/to/token.json' },
-          { key: 'recursive', label: 'Load Recursively', type: 'checkbox' },
+          { key: 'service_account_key', label: 'Service Account Key (JSON)', type: 'textarea',
+            required: true,
+            placeholder: '{\n  "type": "service_account",\n  "project_id": "...",\n  ...\n}' },
+          { key: 'client_id', label: 'Client ID', type: 'text',
+            required: true,
+            placeholder: 'Your Google OAuth2 Client ID' },
+          { key: 'client_secret', label: 'Client Secret', type: 'password',
+            required: true,
+            placeholder: 'Your Google OAuth2 Client Secret' },
+          { key: 'refresh_token', label: 'Refresh Token', type: 'password',
+            required: true,
+            placeholder: 'Your Google OAuth2 Refresh Token' },
+          { 
+            key: 'token_file', 
+            label: 'OAuth Credentials File', 
+            type: 'file',
+            accept: '.json',
+            required: true,
+            placeholder: 'Upload credentials.json file' 
+          },
+          { key: 'load_recursively', label: 'Load Recursively', type: 'checkbox' },
           { key: 'load_trashed_files', label: 'Load Trashed Files', type: 'checkbox' },
         ];
       case 'Slack':
         return [
           ...commonFields,
-          { key: 'zip_path', label: 'Slack Export ZIP Path', type: 'text', required: true,
-            placeholder: '/path/to/slack-export.zip' },
+          { 
+            key: 'zip_file', 
+            label: 'Slack Export ZIP File', 
+            type: 'file', 
+            required: true,
+            accept: '.zip'
+          },
           { key: 'workspace_url', label: 'Workspace URL', type: 'url',
-            placeholder: 'https://your-workspace.slack.com' },
+            placeholder: 'https://your-workspace.slack.com', required: true },
         ];
       case 'One Drive':
         return [
@@ -153,6 +175,41 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
             required: true 
           }
         ];
+      case 'Salesforce':
+        return [
+          ...commonFields,
+          { key: 'client_id', label: 'Client ID', type: 'text',
+            required: true,
+            placeholder: 'Your Salesforce Client ID' },
+          { key: 'client_secret', label: 'Client Secret', type: 'password',
+            required: true,
+            placeholder: 'Your Salesforce Client Secret' },
+          { key: 'refresh_token', label: 'Refresh Token', type: 'password',
+            required: true,
+            placeholder: 'Your Salesforce Refresh Token' },
+          { key: 'stream_name', label: 'Stream Name', type: 'text',
+            required: true,
+            placeholder: 'e.g., Account, Contact, Lead, etc.' },
+          { key: 'start_date', label: 'Start Date', type: 'date',
+            required: true,
+            placeholder: 'Data sync start date' },
+          { key: 'instance_url', label: 'Instance URL', type: 'text',
+            required: true,
+            placeholder: 'https://your-instance.salesforce.com' },
+        ];
+      case 'Hubspot':
+        return [
+          ...commonFields,
+          { key: 'access_token', label: 'Access Token', type: 'password',
+            required: true,
+            placeholder: 'Your HubSpot Access Token' },
+          { key: 'stream_name', label: 'Stream Name', type: 'text',
+            required: true,
+            placeholder: 'e.g., companies, contacts, deals, etc.' },
+          { key: 'start_date', label: 'Start Date', type: 'date',
+            required: true,
+            placeholder: 'Data sync start date' },
+        ];
       default:
         return [];
     }
@@ -190,19 +247,41 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
 
       case 'Google Drive':
         try {
-          if (formData.service_account_key) {
-            JSON.parse(formData.service_account_key);
-          } else {
-            newErrors.push({ field: 'service_account_key', message: 'Service account key is required' });
+          if (!formData.service_account_key) {
+            throw new Error('Service Account Key is required');
           }
-        } catch {
-          newErrors.push({ field: 'service_account_key', message: 'Invalid JSON format for service account key' });
+          try {
+            JSON.parse(formData.service_account_key);
+          } catch {
+            throw new Error('Invalid JSON format for Service Account Key');
+          }
+        } catch (error) {
+          if (error instanceof Error) {
+            newErrors.push({ field: 'service_account_key', message: error.message });
+          } else {
+            newErrors.push({ field: 'service_account_key', message: 'Invalid Service Account Key' });
+          }
+        }
+        if (!formData.folder_id) {
+          newErrors.push({ field: 'folder_id', message: 'Folder ID is required' });
+        }
+        if (!formData.client_id) {
+          newErrors.push({ field: 'client_id', message: 'Client ID is required' });
+        }
+        if (!formData.client_secret) {
+          newErrors.push({ field: 'client_secret', message: 'Client Secret is required' });
+        }
+        if (!formData.refresh_token) {
+          newErrors.push({ field: 'refresh_token', message: 'Refresh Token is required' });
+        }
+        if (!formData.token_file?.[0]) {
+          newErrors.push({ field: 'token_file', message: 'OAuth Credentials File is required' });
         }
         break;
 
       case 'Slack':
-        if (!formData.zip_path) {
-          newErrors.push({ field: 'zip_path', message: 'ZIP path is required' });
+        if (!formData.zip_file) {
+          newErrors.push({ field: 'zip_file', message: 'ZIP file is required' });
         }
         if (formData.workspace_url && !formData.workspace_url.match(/^https:\/\/[a-zA-Z0-9-]+\.slack\.com$/)) {
           newErrors.push({ field: 'workspace_url', message: 'Invalid Slack workspace URL' });
@@ -267,6 +346,39 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
           newErrors.push({ field: 'files', message: 'One or more files exceed 20MB limit' });
         }
         break;
+
+      case 'Salesforce':
+        if (!formData.client_id) {
+          newErrors.push({ field: 'client_id', message: 'Client ID is required' });
+        }
+        if (!formData.client_secret) {
+          newErrors.push({ field: 'client_secret', message: 'Client Secret is required' });
+        }
+        if (!formData.refresh_token) {
+          newErrors.push({ field: 'refresh_token', message: 'Refresh Token is required' });
+        }
+        if (!formData.stream_name) {
+          newErrors.push({ field: 'stream_name', message: 'Stream Name is required' });
+        }
+        if (!formData.start_date) {
+          newErrors.push({ field: 'start_date', message: 'Start Date is required' });
+        }
+        if (!formData.instance_url) {
+          newErrors.push({ field: 'instance_url', message: 'Instance URL is required' });
+        }
+        break;
+
+      case 'HubSpot':
+        if (!formData.access_token) {
+          newErrors.push({ field: 'access_token', message: 'Access Token is required' });
+        }
+        if (!formData.stream_name) {
+          newErrors.push({ field: 'stream_name', message: 'Stream Name is required' });
+        }
+        if (!formData.start_date) {
+          newErrors.push({ field: 'start_date', message: 'Start Date is required' });
+        }
+        break;
     }
 
     fields.forEach(field => {
@@ -285,16 +397,76 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
       setUploadStatus('uploading');
 
       try {
-        if (selectedSource === 'Upload Files') {
+        if (selectedSource === 'Google Drive') {
+          const fileFormData = new FormData();
+          fileFormData.append('data_source_name', formData.source_name);
+          fileFormData.append('folder_id', formData.folder_id);
+          fileFormData.append('service_account_key', formData.service_account_key);
+          fileFormData.append('client_id', formData.client_id);
+          fileFormData.append('client_secret', formData.client_secret);
+          fileFormData.append('refresh_token', formData.refresh_token);
+          
+          // Token file is required
+          if (!formData.token_file?.[0]) {
+            throw new Error('OAuth Credentials File is required');
+          }
+          fileFormData.append('token_file', formData.token_file[0]);
+          
+          fileFormData.append('load_recursively', String(Boolean(formData.load_recursively)));
+          fileFormData.append('load_trashed_files', String(Boolean(formData.load_trashed_files)));
+
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/google-drive`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session?.user?.accessToken}`
+            },
+            body: fileFormData
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to connect Google Drive data source');
+          }
+
+          const result = await response.json();
+          setUploadStatus('success');
+          window.dispatchEvent(new Event('sourceAdded'));
+          setTimeout(() => onClose(), 1000);
+          return;
+        }
+
+        if (selectedSource === 'Slack' || selectedSource === 'Upload Files' || 
+            selectedSource === 'Dropbox' || selectedSource === 'One Drive' || 
+            selectedSource === 'Sharepoint') {
+          const fileFormData = new FormData();
           const files = formData.files as File[];
-          const uploadedSources = [];
+          
+          fileFormData.append('name', formData.source_name);
+          
+          // Add source-specific fields
+          if (selectedSource === 'Slack') {
+            fileFormData.append('workspace_url', formData.workspace_url);
+          } else if (selectedSource === 'Dropbox') {
+            fileFormData.append('access_token', formData.dropbox_access_token);
+            fileFormData.append('recursive', String(Boolean(formData.recursive)));
+          } else if (selectedSource === 'One Drive') {
+            fileFormData.append('client_id', formData.client_id);
+            fileFormData.append('client_secret', formData.client_secret);
+            fileFormData.append('recursive', String(Boolean(formData.recursive)));
+          } else if (selectedSource === 'Sharepoint') {
+            fileFormData.append('tenant_name', formData.tenant_name);
+            fileFormData.append('collection_id', formData.collection_id);
+            fileFormData.append('subsite_id', formData.subsite_id);
+          }
 
-          for (const file of files) {
-            const fileFormData = new FormData();
-            fileFormData.append('file', file);
-            fileFormData.append('name', formData.source_name || file.name);
+          // Append all files
+          files.forEach((file, index) => {
+            fileFormData.append(`file_${index}`, file);
+          });
+          fileFormData.append('file_count', String(files.length));
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/upload`, {
+          const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/data-sources/${selectedSource?.toLowerCase().replace(' ', '-')}`;
+          const response = await fetch(endpoint, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${session?.user?.accessToken}`
@@ -304,19 +476,84 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
 
             if (!response.ok) {
               const errorData = await response.json();
-              throw new Error(errorData.detail || `Failed to upload file: ${file.name}`);
+            throw new Error(errorData.detail || `Failed to connect ${selectedSource} data source`);
             }
 
             const result = await response.json();
-            uploadedSources.push(result);
-          }
-
           setUploadStatus('success');
           window.dispatchEvent(new Event('sourceAdded'));
           setTimeout(() => onClose(), 1000);
           return;
         }
 
+        if (selectedSource === 'Salesforce') {
+          const salesforceConfig = {
+            name: formData.source_name,
+            source_type: 'salesforce',
+            connection_settings: {
+              client_id: formData.client_id,
+              client_secret: formData.client_secret,
+              refresh_token: formData.refresh_token,
+              stream_name: formData.stream_name,
+              start_date: formData.start_date,
+              instance_url: formData.instance_url
+            }
+          };
+
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/salesforce`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.user?.accessToken}`
+            },
+            body: JSON.stringify(salesforceConfig)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to connect Salesforce data source');
+          }
+
+          const result = await response.json();
+          setUploadStatus('success');
+          window.dispatchEvent(new Event('sourceAdded'));
+          setTimeout(() => onClose(), 1000);
+          return;
+        }
+
+        if (selectedSource === 'HubSpot') {
+          const hubspotConfig = {
+            name: formData.source_name,
+            source_type: 'hubspot',
+            connection_settings: {
+              access_token: formData.access_token,
+              stream_name: formData.stream_name,
+              start_date: formData.start_date
+            }
+          };
+
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/hubspot`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.user?.accessToken}`
+            },
+            body: JSON.stringify(hubspotConfig)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to connect HubSpot data source');
+          }
+
+          const result = await response.json();
+          setUploadStatus('success');
+          window.dispatchEvent(new Event('sourceAdded'));
+          setTimeout(() => onClose(), 1000);
+          return;
+        }
+
+        // Handle other data sources that don't use file upload
         const dataSourcePayload = {
           name: formData.source_name || selectedSource,
           source_type: (selectedSource ?? '').toLowerCase().replace(' ', '_'),
@@ -363,7 +600,7 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
     }
   };
 
-  const handleInputChange = (key: string, value: string) => {
+  const handleInputChange = (key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
@@ -426,7 +663,7 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
                   <Checkbox
                     id={field.key}
                     checked={Boolean(formData[field.key])}
-                    onCheckedChange={(checked) => handleInputChange(field.key, String(checked))}
+                    onCheckedChange={(checked) => handleInputChange(field.key, checked)}
                     className="h-4 w-4 rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
                   />
                   <Label htmlFor={field.key} className="text-sm font-normal">
