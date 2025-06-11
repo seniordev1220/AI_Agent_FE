@@ -142,12 +142,10 @@ export default function ChatPage({
         }
 
         const history = await historyResponse.json();
-        
         // Format the content of each message in the history
         const formattedHistory = history.messages.map((msg: ChatMessage) => {
           // Store the raw content
           const raw_content = msg.content;
-          
           // Format the content
           const formattedContent = formatContent(msg.content, msg.citations);
           
@@ -455,19 +453,23 @@ export default function ChatPage({
 
       const searchResult = await response.json();
       
-      // Store the raw content and metadata separately
+      // Validate the response structure
+      if (!searchResult || typeof searchResult !== 'object') {
+        throw new Error('Invalid search result format');
+      }
+
+      // Extract the content and metadata from the search result with fallbacks
       const resultMessage: ChatMessage = {
         role: "assistant",
-        content: searchResult.content, // Store raw content
+        content: searchResult?.ai_response || searchResult?.content || "No response content available",
         model: "sonar",
         attachments: [],
-        search_results: searchResult.search_results,
-        citations: searchResult.citations
+        search_results: searchResult?.search_results || [],
+        citations: searchResult?.citations || []
       };
 
       // Format content for display
-      const formattedContent = formatContent(searchResult.content, searchResult.citations);
-      console.log(resultMessage);
+      const formattedContent = formatContent(resultMessage.content, resultMessage.citations);
       const displayMessage = {
         ...resultMessage,
         content: formattedContent

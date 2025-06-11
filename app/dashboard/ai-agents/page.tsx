@@ -30,6 +30,7 @@ export default function AIAgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [selectedModel, setSelectedModel] = useState("gpt-3.5-turbo")
   const [inputMessage, setInputMessage] = useState("")
+  const [isSending, setIsSending] = useState(false)
   const { data: session } = useSession()
 
   useEffect(() => {
@@ -62,6 +63,8 @@ export default function AIAgentsPage() {
   };
 
   const handleSendMessage = async (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string) => {
+    if (isSending) return;
+    
     if (!selectedAgent || !session) {
       toast.error('Please select an agent first');
       return;
@@ -71,6 +74,8 @@ export default function AIAgentsPage() {
       toast.error('Please enter a message');
       return;
     }
+
+    setIsSending(true);
 
     try {
       // Strip HTML tags from the message
@@ -103,10 +108,19 @@ export default function AIAgentsPage() {
       }
 
       // After successful message send, navigate to the chat page
-      router.push(`/dashboard/chat/${selectedAgent.id}`);
+      const chatUrl = `/dashboard/chat/${selectedAgent.id}`;
+      try {
+        // Use replace instead of push to prevent going back to this page
+        await router.replace(chatUrl);
+      } catch (navigationError) {
+        console.error("Navigation error:", navigationError);
+        // If navigation fails, try a hard redirect
+        window.location.href = chatUrl;
+      }
     } catch (error) {
       console.error("Error in chat completion:", error);
       toast.error(error instanceof Error ? error.message : 'Failed to send message');
+      setIsSending(false); // Only reset sending state if there's an error
     }
   };
 
@@ -189,9 +203,10 @@ export default function AIAgentsPage() {
                 </p>
               </div>
             )}
-            <div className={!selectedAgent ? 'opacity-50 pointer-events-none' : ''}>
+            <div className={!selectedAgent || isSending ? 'opacity-50 pointer-events-none' : ''}>
               <MessageInput
                 onSend={handleSendMessage}
+                disabled={isSending}
               />
             </div>
           </div>

@@ -25,6 +25,7 @@ import ListItemAvatar from '@mui/material/ListItemAvatar';
 interface MessageInputProps {
   onSend?: (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string) => void;
   onWebSearch?: (query: string) => void;
+  disabled?: boolean;
 }
 
 interface DataSource {
@@ -37,10 +38,10 @@ interface Agent {
   id: string;
   name: string;
   description?: string;
-  avatar_url?: string;
+  avatar_base64?: string;
 }
 
-export function MessageInput({ onSend, onWebSearch }: MessageInputProps) {
+export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imagePrompt, setImagePrompt] = useState("");
@@ -288,27 +289,29 @@ export function MessageInput({ onSend, onWebSearch }: MessageInputProps) {
             {/* Rich Text Editor */}
             <EditorContent
               editor={editor}
-              className="min-h-[40px] max-h-[200px] p-2 focus:outline-none focus-visible:outline-none [&_.ProseMirror]:focus:outline-none [&_.ProseMirror]:focus-visible:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:border-none [&_.ProseMirror]:overflow-y-auto"
+              className={`min-h-[40px] max-h-[200px] p-2 focus:outline-none focus-visible:outline-none [&_.ProseMirror]:focus:outline-none [&_.ProseMirror]:focus-visible:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:border-none [&_.ProseMirror]:overflow-y-auto ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
             />
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-between px-2 py-1 border-t border-gray-200">
+            <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={toggleBold}
+                  disabled={disabled}
                   className={`p-1.5 hover:bg-gray-100 rounded-md ${
                     editor?.isActive('bold') ? 'bg-gray-100 text-black' : 'text-gray-500'
-                  }`}
+                  } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Bold className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={toggleItalic}
+                  disabled={disabled}
                   className={`p-1.5 hover:bg-gray-100 rounded-md ${
                     editor?.isActive('italic') ? 'bg-gray-100 text-black' : 'text-gray-500'
-                  }`}
+                  } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Italic className="h-4 w-4" />
                 </button>
@@ -316,9 +319,10 @@ export function MessageInput({ onSend, onWebSearch }: MessageInputProps) {
                 <button
                   type="button"
                   onClick={() => setIsWebSearchMode(!isWebSearchMode)}
+                  disabled={disabled}
                   className={`p-1.5 hover:bg-gray-100 rounded-md ${
                     isWebSearchMode ? 'bg-blue-100 text-blue-700' : 'text-gray-500'
-                  }`}
+                  } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Search className="h-4 w-4" />
                 </button>
@@ -328,11 +332,13 @@ export function MessageInput({ onSend, onWebSearch }: MessageInputProps) {
                   onChange={handleFileSelect}
                   className="hidden"
                   multiple
+                  disabled={disabled}
                 />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"
+                  disabled={disabled}
+                  className={`p-1.5 hover:bg-gray-100 rounded-md text-gray-500 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -342,11 +348,12 @@ export function MessageInput({ onSend, onWebSearch }: MessageInputProps) {
               <Button
                 type="submit"
                 size="icon"
+                disabled={disabled}
                 className={`h-8 w-8 ${
                   isWebSearchMode 
                     ? 'bg-blue-500 hover:bg-blue-600 text-white' 
                     : 'bg-transparent hover:bg-gray-100 text-gray-500'
-                }`}
+                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <ArrowRight className="h-4 w-4" />
               </Button>
