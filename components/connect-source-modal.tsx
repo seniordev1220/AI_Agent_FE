@@ -197,7 +197,7 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
             required: true,
             placeholder: 'https://your-instance.salesforce.com' },
         ];
-      case 'Hubspot':
+      case 'HubSpot':
         return [
           ...commonFields,
           { key: 'access_token', label: 'Access Token', type: 'password',
@@ -397,6 +397,38 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
       setUploadStatus('uploading');
 
       try {
+        if (selectedSource === 'Upload Files') {
+          const files = formData.files as File[];
+          const uploadedSources = [];
+
+          for (const file of files) {
+            const fileFormData = new FormData();
+            fileFormData.append('file', file);
+            fileFormData.append('name', formData.source_name || file.name);
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/upload`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session?.user?.accessToken}`
+              },
+              body: fileFormData
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.detail || `Failed to upload file: ${file.name}`);
+            }
+
+            const result = await response.json();
+            uploadedSources.push(result);
+          }
+
+          setUploadStatus('success');
+          window.dispatchEvent(new Event('sourceAdded'));
+          setTimeout(() => onClose(), 1000);
+          return;
+        }
+
         if (selectedSource === 'Google Drive') {
           const fileFormData = new FormData();
           fileFormData.append('data_source_name', formData.source_name);
@@ -439,31 +471,40 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
             selectedSource === 'Dropbox' || selectedSource === 'One Drive' || 
             selectedSource === 'Sharepoint') {
           const fileFormData = new FormData();
-          const files = formData.files as File[];
-          
-          fileFormData.append('name', formData.source_name);
           
           // Add source-specific fields
           if (selectedSource === 'Slack') {
+            if (!formData.zip_file?.[0]) {
+              throw new Error('Slack export ZIP file is required');
+            }
+            fileFormData.append('file', formData.zip_file[0]);
             fileFormData.append('workspace_url', formData.workspace_url);
+            fileFormData.append('data_source_name', formData.source_name);
           } else if (selectedSource === 'Dropbox') {
+            fileFormData.append('name', formData.source_name);
             fileFormData.append('access_token', formData.dropbox_access_token);
             fileFormData.append('recursive', String(Boolean(formData.recursive)));
           } else if (selectedSource === 'One Drive') {
+            fileFormData.append('name', formData.source_name);
             fileFormData.append('client_id', formData.client_id);
             fileFormData.append('client_secret', formData.client_secret);
             fileFormData.append('recursive', String(Boolean(formData.recursive)));
           } else if (selectedSource === 'Sharepoint') {
+            fileFormData.append('name', formData.source_name);
             fileFormData.append('tenant_name', formData.tenant_name);
             fileFormData.append('collection_id', formData.collection_id);
             fileFormData.append('subsite_id', formData.subsite_id);
+          } else if (selectedSource === 'Upload Files') {
+            fileFormData.append('name', formData.source_name);
+            const files = formData.files as File[];
+            if (!files?.length) {
+              throw new Error('At least one file is required');
+            }
+            files.forEach((file, index) => {
+              fileFormData.append(`file_${index}`, file);
+            });
+            fileFormData.append('file_count', String(files.length));
           }
-
-          // Append all files
-          files.forEach((file, index) => {
-            fileFormData.append(`file_${index}`, file);
-          });
-          fileFormData.append('file_count', String(files.length));
 
           const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/data-sources/${selectedSource?.toLowerCase().replace(' ', '-')}`;
           const response = await fetch(endpoint, {
