@@ -1,5 +1,5 @@
 "use client"
-import { Box, Typography, Button, TextField, Switch, Select, MenuItem, FormControl, InputLabel, Chip, CircularProgress } from '@mui/material'
+import { Box, Typography, Button, TextField, Switch, Select, MenuItem, FormControl, InputLabel, Chip, CircularProgress, Snackbar, Alert } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { useState, useEffect } from 'react'
@@ -107,6 +107,10 @@ export default function CreateAgentPage() {
   // Add new state for models
   const [availableModels, setAvailableModels] = useState<ModelSetting[]>([])
   const [isLoadingModels, setIsLoadingModels] = useState(true)
+
+  const [openToast, setOpenToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>('success')
 
   // Load existing agent data on component mount if editing
   useEffect(() => {
@@ -219,8 +223,20 @@ export default function CreateAgentPage() {
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files?.[0]) {
-      setProfileImage(event.target.files[0])
+      const file = event.target.files[0];
+      // Check if file size is greater than 1MB
+      if (file.size > 1024 * 1024) {
+        setToastMessage('Profile image must be less than 1MB')
+        setToastSeverity('error')
+        setOpenToast(true)
+        return;
+      }
+      setProfileImage(file)
     }
+  }
+
+  const handleCloseToast = () => {
+    setOpenToast(false)
   }
 
   const handleKnowledgeBaseToggle = (id: string) => {
@@ -304,6 +320,16 @@ export default function CreateAgentPage() {
       // bgcolor: '#F6F9FC',
       minHeight: '100vh'
     }}>
+      <Snackbar 
+        open={openToast} 
+        autoHideDuration={6000} 
+        onClose={handleCloseToast}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert onClose={handleCloseToast} severity={toastSeverity} sx={{ width: '100%' }}>
+          {toastMessage}
+        </Alert>
+      </Snackbar>
       {/* Header */}
       <Box sx={{
         display: 'flex',
@@ -468,6 +494,9 @@ export default function CreateAgentPage() {
             )}
           </ImageUploadButton>
         </label>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          Maximum file size: 1MB
+        </Typography>
       </StyledSection>
 
       {/* Instructions Section */}
