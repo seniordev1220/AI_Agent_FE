@@ -351,8 +351,10 @@ export default function ChatPage({
   }, []);
 
   // Update the handleSendMessage function
-  const handleSendMessage = async (message: string, files?: File[]) => {
+  const handleSendMessage = async (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string, selectedSourceIds?: string[]) => {
     if (!agent || !session) return;
+    
+    console.log('ChatPage received selected source IDs:', selectedSourceIds);
     
     // Strip HTML tags from the message
     const strippedMessage = message.replace(/<[^>]*>/g, '');
@@ -363,6 +365,12 @@ export default function ChatPage({
     const formData = new FormData();
     formData.append('content', strippedMessage);
     formData.append('model', selectedModel);
+    
+    // Add selected source IDs to the request if they exist
+    if (selectedSourceIds && selectedSourceIds.length > 0) {
+      formData.append('source_ids', JSON.stringify(selectedSourceIds));
+      console.log('Adding source IDs to FormData:', JSON.stringify(selectedSourceIds));
+    }
     
     if (files && files.length > 0) {
       files.forEach((file) => {

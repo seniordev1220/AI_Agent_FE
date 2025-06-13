@@ -67,30 +67,16 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
         return [
           ...commonFields,
           { key: 'folder_id', label: 'Folder ID', type: 'text', 
-            placeholder: 'Google Drive Folder ID',
-            required: true },
-          { key: 'service_account_key', label: 'Service Account Key (JSON)', type: 'textarea',
-            required: true,
-            placeholder: '{\n  "type": "service_account",\n  "project_id": "...",\n  ...\n}' },
-          { key: 'client_id', label: 'Client ID', type: 'text',
-            required: true,
-            placeholder: 'Your Google OAuth2 Client ID' },
-          { key: 'client_secret', label: 'Client Secret', type: 'password',
-            required: true,
-            placeholder: 'Your Google OAuth2 Client Secret' },
-          { key: 'refresh_token', label: 'Refresh Token', type: 'password',
-            required: true,
-            placeholder: 'Your Google OAuth2 Refresh Token' },
+            placeholder: 'Google Drive Folder ID (optional)' },
+          { key: 'file_ids', label: 'File IDs (one per line)', type: 'textarea',
+            placeholder: 'Specific file IDs to load (optional)' },
           { 
             key: 'token_file', 
-            label: 'OAuth Credentials File', 
+            label: 'Token File', 
             type: 'file',
             accept: '.json',
-            required: true,
-            placeholder: 'Upload credentials.json file' 
-          },
-          { key: 'load_recursively', label: 'Load Recursively', type: 'checkbox' },
-          { key: 'load_trashed_files', label: 'Load Trashed Files', type: 'checkbox' },
+            placeholder: 'Upload your token file' 
+          }
         ];
       case 'Slack':
         return [
@@ -147,8 +133,6 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
             placeholder: 'https://example.com/page1\nhttps://example.com/page2' },
           { key: 'requests_per_second', label: 'Requests per Second', type: 'number',
             placeholder: '2' },
-          { key: 'browser_session_options', label: 'Browser Session Options (JSON)', type: 'textarea',
-            placeholder: '{\n  "headers": {\n    "User-Agent": "Mozilla/5.0..."\n  }\n}' },
         ];
       case 'Snowflake':
         return [
@@ -246,36 +230,39 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
         break;
 
       case 'Google Drive':
-        try {
-          if (!formData.service_account_key) {
-            throw new Error('Service Account Key is required');
-          }
-          try {
-            JSON.parse(formData.service_account_key);
-          } catch {
-            throw new Error('Invalid JSON format for Service Account Key');
-          }
-        } catch (error) {
-          if (error instanceof Error) {
-            newErrors.push({ field: 'service_account_key', message: error.message });
-          } else {
-            newErrors.push({ field: 'service_account_key', message: 'Invalid Service Account Key' });
-          }
+        // Check that only one of folder_id or file_ids is provided
+        if (formData.folder_id && formData.file_ids) {
+          newErrors.push({ 
+            field: 'folder_id', 
+            message: 'Cannot specify both Folder ID and File IDs. Please provide only one.' 
+          });
+          newErrors.push({ 
+            field: 'file_ids', 
+            message: 'Cannot specify both Folder ID and File IDs. Please provide only one.' 
+          });
         }
-        if (!formData.folder_id) {
-          newErrors.push({ field: 'folder_id', message: 'Folder ID is required' });
+
+        // Validate folder_id format if provided
+        if (formData.folder_id && !formData.folder_id.match(/^[a-zA-Z0-9_-]+$/)) {
+          newErrors.push({ field: 'folder_id', message: 'Invalid folder ID format' });
         }
-        if (!formData.client_id) {
-          newErrors.push({ field: 'client_id', message: 'Client ID is required' });
+        
+        // Validate file_ids format if provided
+        if (formData.file_ids) {
+          const fileIds = formData.file_ids.split('\n').map((id: string) => id.trim()).filter((id: string) => id);
+          fileIds.forEach((id: string, index: number) => {
+            if (!id.match(/^[a-zA-Z0-9_-]+$/)) {
+              newErrors.push({ field: 'file_ids', message: `Invalid file ID format on line ${index + 1}` });
+            }
+          });
         }
-        if (!formData.client_secret) {
-          newErrors.push({ field: 'client_secret', message: 'Client Secret is required' });
-        }
-        if (!formData.refresh_token) {
-          newErrors.push({ field: 'refresh_token', message: 'Refresh Token is required' });
-        }
-        if (!formData.token_file?.[0]) {
-          newErrors.push({ field: 'token_file', message: 'OAuth Credentials File is required' });
+
+        // Check that at least one of folder_id or file_ids is provided
+        if (!formData.folder_id && !formData.file_ids) {
+          newErrors.push({ 
+            field: 'folder_id', 
+            message: 'Please provide either a Folder ID or File IDs' 
+          });
         }
         break;
 
@@ -321,13 +308,6 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
           });
         } else {
           newErrors.push({ field: 'urls', message: 'At least one URL is required' });
-        }
-        if (formData.browser_session_options) {
-          try {
-            JSON.parse(formData.browser_session_options);
-          } catch {
-            newErrors.push({ field: 'browser_session_options', message: 'Invalid JSON format' });
-          }
         }
         break;
 
@@ -432,20 +412,12 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
         if (selectedSource === 'Google Drive') {
           const fileFormData = new FormData();
           fileFormData.append('data_source_name', formData.source_name);
-          fileFormData.append('folder_id', formData.folder_id);
-          fileFormData.append('service_account_key', formData.service_account_key);
-          fileFormData.append('client_id', formData.client_id);
-          fileFormData.append('client_secret', formData.client_secret);
-          fileFormData.append('refresh_token', formData.refresh_token);
+          fileFormData.append('folder_id', formData.folder_id || '');
+          fileFormData.append('file_ids', formData.file_ids || '');
           
-          // Token file is required
-          if (!formData.token_file?.[0]) {
-            throw new Error('OAuth Credentials File is required');
+          if (formData.token_file?.[0]) {
+            fileFormData.append('token_file', formData.token_file[0]);
           }
-          fileFormData.append('token_file', formData.token_file[0]);
-          
-          fileFormData.append('load_recursively', String(Boolean(formData.load_recursively)));
-          fileFormData.append('load_trashed_files', String(Boolean(formData.load_trashed_files)));
 
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/google-drive`, {
             method: 'POST',
@@ -675,7 +647,6 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
                     getFieldError(field.key) ? 'border-red-500' : ''
                   }`}
                   onChange={(e) => handleInputChange(field.key, e.target.value)}
-                  required={field.required !== false}
                   placeholder={field.placeholder}
                 />
               ) : field.type === 'file' ? (

@@ -23,7 +23,7 @@ import Avatar from '@mui/material/Avatar';
 import ListItemAvatar from '@mui/material/ListItemAvatar';
 
 interface MessageInputProps {
-  onSend?: (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string) => void;
+  onSend?: (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string, selectedSourceIds?: string[]) => void;
   onWebSearch?: (query: string) => void;
   disabled?: boolean;
 }
@@ -32,6 +32,7 @@ interface DataSource {
   id: string;
   name: string;
   description?: string;
+  is_converted: boolean;
 }
 
 interface Agent {
@@ -59,6 +60,8 @@ export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProp
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isWebSearchMode, setIsWebSearchMode] = useState(false);
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -112,10 +115,11 @@ export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProp
             if (isWebSearchMode) {
               onWebSearch?.(editor.getHTML().trim());
             } else {
-              onSend?.(editor.getHTML().trim(), selectedFiles, false, "");
+              onSend?.(editor.getHTML().trim(), selectedFiles, false, "", selectedSources);
             }
             editor.commands.setContent('');
             setSelectedFiles([]);
+            setSelectedSources([]);
             setIsWebSearchMode(false);
             const element = editor.view.dom as HTMLElement;
             element.style.height = '40px';
@@ -188,17 +192,20 @@ export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProp
     e.preventDefault();
     if (!editor || !editor.getHTML().trim()) return;
 
+    console.log('Submitting message with selected sources:', selectedSources);
+
     if (isWebSearchMode) {
       // Call web search with the input content
       onWebSearch?.(editor.getHTML().trim());
     } else {
-      // Normal message send
-      onSend?.(editor.getHTML().trim(), selectedFiles, false, "");
+      // Normal message send with selected source IDs
+      onSend?.(editor.getHTML().trim(), selectedFiles, false, "", selectedSources);
     }
     
     // Clear input and reset mode
     editor.commands.setContent('');
     setSelectedFiles([]);
+    setSelectedSources([]);
     setIsWebSearchMode(false);
   };
 
@@ -207,7 +214,7 @@ export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProp
     
     // Instead of generating the image here, we'll send it to the parent component
     if (onSend) {
-      onSend("", [], true, imagePrompt);
+      onSend("", [], true, imagePrompt, []);
       setIsImageModalOpen(false);
       setImagePrompt("");
     }
@@ -230,7 +237,7 @@ export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProp
     const searchText = `${prefix}${mentionSearch}`;
     const startPosition = currentPosition - searchText.length;
 
-    // Replace the search text with the selected item
+    // Replace the search text with the selected item wrapped in code block
     editor
       .chain()
       .focus()
@@ -239,6 +246,12 @@ export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProp
       .insertContent(`${prefix}${item.name} `)
       .run();
 
+    if (mentionType === 'knowledge') {
+      const newSelectedSources = [...selectedSources, item.id];
+      setSelectedSources(newSelectedSources);
+      console.log('Selected Knowledge Source:', item);
+      console.log('Current Selected Sources:', newSelectedSources);
+    }
     setMentionAnchor(null);
     setMentionType(null);
   };
@@ -246,7 +259,18 @@ export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProp
   // Filter items based on search
   const filteredItems = mentionType === 'agent'
     ? agents.filter(agent => agent.name.toLowerCase().includes(mentionSearch.toLowerCase()))
-    : dataSources.filter(source => source.name.toLowerCase().includes(mentionSearch.toLowerCase()));
+    : dataSources.filter(source => 
+        source.is_converted && 
+        source.name.toLowerCase().includes(mentionSearch.toLowerCase())
+      );
+
+  const removeSelectedSource = (sourceName: string) => {
+    setSelectedSources(prev => prev.filter(name => name !== sourceName));
+    if (editor) {
+      const content = editor.getHTML();
+      editor.commands.setContent(content.replace(`/${sourceName} `, ''));
+    }
+  };
 
   return (
     <div className="w-full">

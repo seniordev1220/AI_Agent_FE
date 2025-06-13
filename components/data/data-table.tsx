@@ -94,10 +94,10 @@ export function DataTable() {
       github: "/data_icon/github.svg",
       one_drive: "/data_icon/onedrive.svg",
       sharepoint: "/data_icon/sharepoint.svg",
-      web_scraper: "/data_icon/web.svg",
       snowflake: "/data_icon/snowflake.svg",
       salesforce: "/data_icon/salesforce.svg",
-      hubspot: "/data_icon/hubspot.svg"
+      hubspot: "/data_icon/hubspot.svg",
+      web_scraper: "/data_icon/web-scraper.svg",
     };
     return iconMap[sourceType] || "/data_icon/file-icon.svg";
   };
