@@ -7,11 +7,15 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 interface SessionDetails {
   id: string;
   payment_status: string;
-  customer_details?: {
-    email?: string;
-    name?: string;
-  };
+  customer_email?: string;
   amount_total?: number;
+  currency?: string;
+  subscription_id?: string;
+  metadata?: {
+    plan_type: string;
+    billing_interval: string;
+    seats: string;
+  };
 }
 
 export default function SuccessPage() {
@@ -46,8 +50,8 @@ export default function SuccessPage() {
         const data = await response.json()
         
         // Check if the payment was successful
-        if (data.payment_status === 'paid') {
-          setSessionDetails(data)
+        if (data.session?.payment_status === 'paid') {
+          setSessionDetails(data.session)
           setStatus('success')
         } else {
           setStatus('error')
@@ -127,9 +131,9 @@ export default function SuccessPage() {
         <Typography variant="body1" sx={{ mb: 2 }}>
           Your payment has been processed successfully. You now have access to all the features included in your plan.
         </Typography>
-        {sessionDetails?.customer_details?.email && (
+        {sessionDetails?.customer_email && (
           <Typography variant="body2" color="text.secondary">
-            A confirmation email has been sent to {sessionDetails.customer_details.email}
+            A confirmation email has been sent to {sessionDetails.customer_email}
           </Typography>
         )}
         {sessionDetails?.amount_total && (

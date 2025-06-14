@@ -112,6 +112,7 @@ export default function BillingPage() {
   const [openSeatsDialog, setOpenSeatsDialog] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [additionalSeats, setAdditionalSeats] = useState(0)
+  const [error, setError] = useState<string | null>(null);
 
   const handleBillingPeriodChange = (event: React.MouseEvent<HTMLElement>, newPeriod: string | null) => {
     if (newPeriod === 'annually') {
@@ -134,6 +135,7 @@ export default function BillingPage() {
   }
 
   const handleCheckout = async (planType: 'individual' | 'standard' | 'smb', totalSeats?: number) => {
+    setError(null);
     const actionType = totalSeats ? 'add_seats' : 'select';
     try {
       setLoadingAction({ type: actionType, planType });
@@ -152,14 +154,15 @@ export default function BillingPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create checkout session');
       }
 
       const { url } = await response.json();
       window.location.href = url;
     } catch (error) {
       console.error('Error during checkout:', error);
-      // You might want to show an error message to the user here
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setLoadingAction({ type: null, planType: null });
     }
@@ -304,6 +307,12 @@ export default function BillingPage() {
     <Box sx={{ p: 4, maxWidth: '1800px', margin: '0 auto' }}>
       <Typography variant="h4" sx={{ mb: 1 }}>Billing</Typography>
       
+      {error && (
+        <Box sx={{ mb: 3, p: 2, bgcolor: '#FEE2E2', borderRadius: 1 }}>
+          <Typography color="error">{error}</Typography>
+        </Box>
+      )}
+
       <Box sx={{ textAlign: 'center', mb: 6 }}>
         <Typography variant="h4" sx={{ mb: 3 }}>
           Plans for Startups to Fortune 500 Enterprises.
