@@ -13,7 +13,7 @@ export const authOptions = {
       async authorize(credentials) {
         try {
           if (!credentials?.email || !credentials?.password) {
-            return null
+            throw new Error("Email and password are required")
           }
 
           // First, authenticate the user
@@ -28,6 +28,11 @@ export const authOptions = {
 
           const loginData = await loginResponse.json()
 
+          if (!loginResponse.ok) {
+            // Handle specific error messages from the backend
+            throw new Error(loginData.detail || 'Authentication failed')
+          }
+
           if (loginResponse.ok && loginData.access_token) {
             // Then, fetch user details using the access token
             const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
@@ -36,6 +41,11 @@ export const authOptions = {
                 'Content-Type': 'application/json',
               },
             })
+
+            if (!userResponse.ok) {
+              const userData = await userResponse.json()
+              throw new Error(userData.detail || 'Failed to fetch user details')
+            }
 
             const userData = await userResponse.json()
 
@@ -50,10 +60,10 @@ export const authOptions = {
             }
           }
 
-          return null
+          throw new Error('Invalid credentials')
         } catch (error) {
           console.error('Auth error:', error)
-          return null
+          throw error // Propagate the error message
         }
       }
     }),
@@ -64,6 +74,7 @@ export const authOptions = {
   ],
   pages: {
     signIn: '/sign-in',
+    error: '/auth/error', // Add custom error page
   },
   callbacks: {
     async signIn({ user, account }: { user: any, account: any }) {
@@ -83,8 +94,8 @@ export const authOptions = {
           });
 
           if (!response.ok) {
-            console.error('Failed to store Google user in database');
-            return false;
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to authenticate with Google');
           }
 
           const data = await response.json();
@@ -93,7 +104,7 @@ export const authOptions = {
           }
         } catch (error) {
           console.error('Error storing Google user:', error);
-          return false;
+          throw error; // Propagate the error message
         }
       }
       return true;
