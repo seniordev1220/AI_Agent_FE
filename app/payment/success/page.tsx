@@ -138,7 +138,7 @@ export default function SuccessPage() {
         )}
         {sessionDetails?.amount_total && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Amount paid: ${(sessionDetails.amount_total / 100).toFixed(2)}
+            Amount paid: ${(sessionDetails.amount_total).toFixed(2)}
           </Typography>
         )}
       </Box>
