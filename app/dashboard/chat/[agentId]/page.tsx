@@ -61,8 +61,11 @@ interface Agent {
   avatar: string;
   avatar_base64?: string;
   description: string;
-  instruction: string;
-  welcomeMessage: string;
+  welcome_message: string;
+  theme?: string;
+  position?: string;
+  height?: string;
+  width?: string;
   vector_sources_ids?: number[];
 }
 
@@ -782,7 +785,7 @@ export default function ChatPage({
               {agent?.description || "Loading agent description..."}
             </p>
             <p className="text-gray-500 text-center max-w-[600px]">
-              {agent?.welcomeMessage || "Hello! How can I help you today?"}
+              {agent?.welcome_message || "Hello! How can I help you today?"}
             </p>
           </div>
 

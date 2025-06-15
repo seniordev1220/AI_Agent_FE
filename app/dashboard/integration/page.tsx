@@ -54,7 +54,10 @@ interface Agent {
   welcome_message: string;
   avatar: string;
   avatar_base64: string;
-  instructions: string;
+  theme?: string;
+  position?: string;
+  height?: string;
+  width?: string;
 }
 
 export default function IntegrationPage() {
@@ -111,10 +114,21 @@ export default function IntegrationPage() {
     setSelectedTab(newValue)
   }
 
-  const embedCode = `<iframe
-  src="https://app.finiiteai.com/embed/agent/v1/${agentId || 'jogpwrjgw'}?theme=chat"
-  style="border: none; height: 600px; width: 400px"
-/>`
+  const embedCode = `<div id="finiite-chat-widget"></div>
+<script>
+    (function() {
+        var script = document.createElement('script');
+        script.src = '${process.env.NEXT_PUBLIC_API_URL}/static/widget.js';
+        script.async = true;
+        script.onload = function() {
+            initFiniiteWidget({
+                agentId: '${agentId || 'jogpwrjgw'}',
+                baseUrl: '${process.env.NEXT_PUBLIC_API_URL}'
+            });
+        };
+        document.head.appendChild(script);
+    })();
+</script>`
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(embedCode)
@@ -160,17 +174,6 @@ export default function IntegrationPage() {
                 <Typography variant="h6">
                   Select the agent you want to deploy.
                 </Typography>
-                <Button 
-                  variant="contained" 
-                  sx={{ 
-                    bgcolor: '#9FB5F1',
-                    '&:hover': {
-                      bgcolor: '#8CA1E0'
-                    }
-                  }}
-                >
-                  Save
-                </Button>
               </Box>
 
               <FormControl fullWidth sx={{ mb: 2 }}>
@@ -243,19 +246,6 @@ export default function IntegrationPage() {
               Deploy agents to your website or workflows.
             </Typography>
           </div>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button 
-              variant="contained"
-              sx={{ 
-                bgcolor: '#3366FF',
-                '&:hover': {
-                  bgcolor: '#2952CC'
-                }
-              }}
-            >
-              Save
-            </Button>
-          </Box>
         </Box>
 
         {/* Agent Selection */}
@@ -463,10 +453,13 @@ export default function IntegrationPage() {
                           id: selectedAgent,
                           name: agentName || '',
                           description: myAgents.find(a => a.id === selectedAgent)?.description || '',
-                          welcomeMessage: greetingMessage || '',
+                          welcome_message: greetingMessage || '',
                           avatar_base64: myAgents.find(a => a.id === selectedAgent)?.avatar_base64 || '',
                           avatar: myAgents.find(a => a.id === selectedAgent)?.avatar || '/agents/code.svg',
-                          instructions: myAgents.find(a => a.id === selectedAgent)?.instructions || ''
+                          theme: 'light',
+                          position: 'bottom-right',
+                          height: '600px',
+                          width: '400px'
                         } : null
                       }
                       isEmbedded={true}

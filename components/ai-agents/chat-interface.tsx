@@ -14,10 +14,14 @@ interface ChatMessage {
 interface Agent {
   id: string
   name: string
-  welcomeMessage?: string
+  welcome_message?: string
   avatar?: string
   description?: string
   avatar_base64?: string
+  theme?: string
+  position?: string
+  height?: string
+  width?: string
 }
 
 interface ChatInterfaceProps {
@@ -39,8 +43,8 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
   useEffect(() => {
     // Add welcome message if provided
     console.log(agent, isEmbedded)
-    if (agent?.welcomeMessage) {
-      setMessages([{ role: 'assistant', content: agent.welcomeMessage }])
+    if (agent?.welcome_message) {
+      setMessages([{ role: 'assistant', content: agent.welcome_message }])
     }
   }, [agent])
 
@@ -189,7 +193,7 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
             {agent?.description || "Loading agent description..."}
           </p>
           <p className="text-gray-500 text-center max-w-[600px]">
-            {agent?.welcomeMessage || "Hello! How can I help you today?"}
+            {agent?.welcome_message || "Hello! How can I help you today?"}
           </p>
         </div>
 
@@ -234,12 +238,6 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
                         {uploadedFile.name}
                       </div>
                     )}
-                    <button
-                      className="px-4 py-2 bg-[#9FB5F1] text-white rounded-md hover:bg-[#8CA1E0] transition-colors text-sm"
-                      onClick={handleUpdateKnowledge}
-                    >
-                      Update knowledge base
-                    </button>
                   </div>
                 </div>
               </div>
