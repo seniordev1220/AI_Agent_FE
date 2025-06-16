@@ -692,7 +692,7 @@ export default function ChatPage({
                                     throw new Error('Failed to fetch content');
                                   }
 
-                                  const data = await response.json();
+                                  const data = await response.json();                                
                                   if (data.url) {
                                     window.open(data.url, '_blank');
                                   }
