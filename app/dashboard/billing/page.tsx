@@ -258,6 +258,7 @@ export default function BillingPage() {
 
   const handleCheckout = async (planType: 'individual' | 'standard' | 'smb', totalSeats?: number) => {
     setError(null);
+    console.log('handleCheckout', planType, totalSeats);
     const actionType = totalSeats ? 'add_seats' : 'select';
     try {
       setLoadingAction({ type: actionType, planType });
