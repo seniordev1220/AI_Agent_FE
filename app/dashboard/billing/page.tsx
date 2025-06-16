@@ -5,7 +5,7 @@ import CheckIcon from '@mui/icons-material/Check'
 import { useState, useEffect } from 'react'
 import { CircularProgress } from '@mui/material'
 import { useSession } from "next-auth/react"
-import { PricePlan as PricePlanType } from '@/app/types/price-plan'
+import { PricePlan } from '@/app/types/price-plan'
 
 const PlanCard = styled(Card)(({ theme }) => ({
   padding: theme.spacing(4),
@@ -117,7 +117,7 @@ export default function BillingPage() {
   const [additionalSeats, setAdditionalSeats] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [plans, setPlans] = useState<Plan[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchPricePlans = async () => {
@@ -133,7 +133,7 @@ export default function BillingPage() {
           throw new Error('Failed to fetch price plans');
         }
 
-        const pricePlans: PricePlanType[] = await response.json();
+        const pricePlans: PricePlan[] = await response.json();
         
         // Transform API price plans to match our UI format
         const transformedPlans: Plan[] = pricePlans
@@ -146,11 +146,11 @@ export default function BillingPage() {
             planType: plan.plan_type,
             features: plan.features.map(feature => ({
               text: feature.description,
-              bold: [] // You might want to add logic to determine bold parts
+              bold: [] // We'll keep this empty as we don't have bold text info from API
             }))
           }));
 
-        // Add the enterprise plan since it's handled differently
+        // Add the enterprise plan which is not in the database
         transformedPlans.push({
           name: 'Enterprise',
           price: 'Custom plan',
@@ -180,11 +180,11 @@ export default function BillingPage() {
         });
 
         setPlans(transformedPlans);
-      } catch (err) {
-        console.error('Error fetching price plans:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load price plans');
+      } catch (error) {
+        console.error('Error fetching price plans:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load price plans');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -258,7 +258,6 @@ export default function BillingPage() {
 
   const handleCheckout = async (planType: 'individual' | 'standard' | 'smb', totalSeats?: number) => {
     setError(null);
-    console.log('handleCheckout', planType, totalSeats);
     const actionType = totalSeats ? 'add_seats' : 'select';
     try {
       setLoadingAction({ type: actionType, planType });
@@ -324,114 +323,112 @@ export default function BillingPage() {
         </Box>
       )}
 
-      {isLoading ? (
+      <Box sx={{ textAlign: 'center', mb: 6 }}>
+        <Typography variant="h4" sx={{ mb: 3 }}>
+          Plans for Startups to Fortune 500 Enterprises.
+        </Typography>
+
+        <StyledToggleButtonGroup
+          value={billingPeriod === 'annual' ? 'annually' : 'monthly'}
+          exclusive
+          onChange={handleBillingPeriodChange}
+        >
+          <ToggleButton value="annually">
+            Pay annually (save 25%)
+          </ToggleButton>
+          <ToggleButton value="monthly">
+            Monthly
+          </ToggleButton>
+        </StyledToggleButtonGroup>
+      </Box>
+
+      {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
           <CircularProgress />
         </Box>
       ) : (
-        <>
-          <Box sx={{ textAlign: 'center', mb: 6 }}>
-            <Typography variant="h4" sx={{ mb: 3 }}>
-              Plans for Startups to Fortune 500 Enterprises.
-            </Typography>
-
-            <StyledToggleButtonGroup
-              value={billingPeriod === 'annual' ? 'annually' : 'monthly'}
-              exclusive
-              onChange={handleBillingPeriodChange}
-            >
-              <ToggleButton value="annually">
-                Pay annually (save 25%)
-              </ToggleButton>
-              <ToggleButton value="monthly">
-                Monthly
-              </ToggleButton>
-            </StyledToggleButtonGroup>
-          </Box>
-
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: 3
-          }}>
-            {plans.map((plan) => (
-              <PlanCard key={plan.name} elevation={2}>
-                {plan.planType === 'smb' && (
-                  <BestValueLabel>
-                    Best value
-                  </BestValueLabel>
-                )}
-                
-                <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', textAlign: 'center' }}>{plan.name}</Typography>
-                
-                <Typography variant="h4" sx={{ mb: 3 }}>
-                  {typeof plan.price === 'number' ? (
-                    <>
-                      ${plan.price}
-                      <Typography component="span" variant="body1" color="text.secondary">
-                        {billingPeriod === 'annual' ? ' / year' : ' / month'}
-                      </Typography>
-                    </>
-                  ) : (
-                    plan.price
-                  )}
-                </Typography>
-
-                {plan.planType === 'enterprise' ? (
-                  <ContactSalesButton 
-                    variant="contained"
-                    fullWidth
-                    href="https://tidycal.com/fatima-awan/finiite-ai-demo"
-                    LinkComponent="a"
-                    sx={{ textDecoration: 'none' }}
-                  >
-                    contact sales
-                  </ContactSalesButton>
-                ) : (
-                  <SelectButton 
-                    variant="contained"
-                    fullWidth
-                    onClick={() => {
-                      if (plan.planType === 'individual' || plan.planType === 'standard' || plan.planType === 'smb') {
-                        handleCheckout(plan.planType);
-                      }
-                    }}
-                    disabled={loadingAction.type === 'select' && loadingAction.planType === plan.planType}
-                  >
-                    {loadingAction.type === 'select' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'Select'}
-                  </SelectButton>
-                )}
-
-                {plan.seats && plan.planType !== 'enterprise' && (
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: 3
+        }}>
+          {plans.map((plan) => (
+            <PlanCard key={plan.name} elevation={2}>
+              {plan.name === 'SMB' && (
+                <BestValueLabel>
+                  Best value
+                </BestValueLabel>
+              )}
+              
+              <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', textAlign: 'center' }}>{plan.name}</Typography>
+              
+              <Typography variant="h4" sx={{ mb: 3 }}>
+                {typeof plan.price === 'number' ? (
                   <>
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      {plan.seats} {plan.seats === 1 ? 'seat' : 'seats'} included
+                    ${plan.price}
+                    <Typography component="span" variant="body1" color="text.secondary">
+                      {billingPeriod === 'annual' ? ' / year' : ' / month'}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      add more seats at ${plan.seatPrice}/user/month
-                    </Typography>
-                    <AddSeatsButton 
-                      variant="outlined" 
-                      fullWidth 
-                      sx={{ mb: 3 }}
-                      onClick={() => handleOpenSeatsDialog(plan)}
-                      disabled={loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType}
-                    >
-                      {loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'add seats'}
-                    </AddSeatsButton>
                   </>
+                ) : (
+                  plan.price
                 )}
+              </Typography>
 
-                {plan.features.map((feature, index) => (
-                  <FeatureItem key={index} sx={{ mb: 1 }}>
-                    <CheckIcon sx={{ color: 'black' }} />
-                    {renderFeatureText(feature)}
-                  </FeatureItem>
-                ))}
-              </PlanCard>
-            ))}
-          </Box>
-        </>
+              {plan.planType === 'enterprise' ? (
+                <ContactSalesButton 
+                  variant="contained"
+                  fullWidth
+                  href="https://tidycal.com/fatima-awan/finiite-ai-demo"
+                  LinkComponent="a"
+                  sx={{ textDecoration: 'none' }}
+                >
+                  contact sales
+                </ContactSalesButton>
+              ) : (
+                <SelectButton 
+                  variant="contained"
+                  fullWidth
+                  onClick={() => {
+                    if (plan.planType === 'individual' || plan.planType === 'standard' || plan.planType === 'smb') {
+                      handleCheckout(plan.planType);
+                    }
+                  }}
+                  disabled={loadingAction.type === 'select' && loadingAction.planType === plan.planType}
+                >
+                  {loadingAction.type === 'select' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'Select'}
+                </SelectButton>
+              )}
+
+              {plan.seats && plan.planType !== 'enterprise' && (
+                <>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    {plan.seats} {plan.seats === 1 ? 'seat' : 'seats'} included
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    add more seats at ${plan.seatPrice}/user/month
+                  </Typography>
+                  <AddSeatsButton 
+                    variant="outlined" 
+                    fullWidth 
+                    sx={{ mb: 3 }}
+                    onClick={() => handleOpenSeatsDialog(plan)}
+                    disabled={loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType}
+                  >
+                    {loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'add seats'}
+                  </AddSeatsButton>
+                </>
+              )}
+
+              {plan.features.map((feature, index) => (
+                <FeatureItem key={index} sx={{ mb: 1 }}>
+                  <CheckIcon sx={{ color: 'black' }} />
+                  {renderFeatureText(feature)}
+                </FeatureItem>
+              ))}
+            </PlanCard>
+          ))}
+        </Box>
       )}
 
       <Dialog open={openSeatsDialog} onClose={handleCloseSeatsDialog}>
