@@ -19,13 +19,11 @@ interface ConnectedSource {
   id: number;
   name: string;
   source_type: string;
-  icon?: string;
-}
-
-interface SourceResponse {
-  id: number;
-  name: string;
-  source_type: string;
+  connection_settings?: {
+    file_path?: string;
+    url?: string;
+    file_size?: number;
+  };
 }
 
 interface ChatMessage {
@@ -43,11 +41,7 @@ interface ChatMessage {
   }[];
   created_at?: string;
   updated_at?: string;
-  connected_sources?: {
-    id: number;
-    name: string;
-    source_type: string;
-  }[];
+  connected_sources?: ConnectedSource[];
   citations?: string[];
   search_results?: SearchResult[];
   choices?: any[];
@@ -92,7 +86,7 @@ export default function ChatPage({
 
   // Add this ref to store the current chat history
   const chatHistoryRef = useRef<ChatMessage[]>([]);
-  
+
   // Update ref when chat history changes
   useEffect(() => {
     chatHistoryRef.current = chatHistory;
@@ -103,7 +97,7 @@ export default function ChatPage({
     chatHistory.forEach((msg, index) => {
       const buttonId = `download-btn-${index}`;
       const directButtonId = `${buttonId}-direct`;
-      
+
       [buttonId, directButtonId].forEach(id => {
         const button = document.getElementById(id);
         if (button) {
@@ -137,7 +131,7 @@ export default function ChatPage({
     const fetchAgentAndHistory = async () => {
       setIsLoading(true);
       setError(null);
-      
+
       try {
         // Fetch agent from API
         const agentResponse = await fetch(
@@ -177,7 +171,7 @@ export default function ChatPage({
           const raw_content = message.content;
           // Format the content
           const formattedContent = formatContent(message.content, message.id?.toString() || '', message.citations, message.connected_sources);
-          
+
           return {
             ...message,
             raw_content: raw_content,
@@ -186,7 +180,7 @@ export default function ChatPage({
             search_results: Array.isArray(message.search_results) ? message.search_results : []
           };
         }) as ChatMessage[];
-        
+
         setChatHistory(formattedHistory);
 
         // Set initial connected sources from the last message that has them
@@ -236,17 +230,17 @@ export default function ChatPage({
   const [selectedSourcesMap, setSelectedSourcesMap] = useState<Record<string, number>>({});
 
   // Update the helper function to format the content to include messageId
-  const formatContent = (content: string, messageId: string, citations?: string[], connectedSources?: { id: number; name: string; source_type: string }[]) => {
+  const formatContent = (content: string, messageId: string, citations?: string[], connectedSources?: ConnectedSource[]) => {
     if (!content) return '';
-    
+
     // Split content into paragraphs
     const paragraphs = content.split('\n\n');
-    
+
     return paragraphs
       .map(paragraph => {
         // Skip empty paragraphs
         if (!paragraph.trim()) return '';
-        
+
         const lines = paragraph.split('\n');
         return lines
           .map(line => {
@@ -257,7 +251,7 @@ export default function ChatPage({
 
             // Format bold text (wrapped in **)
             line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            
+
             // Format download links
             const downloadMatch = line.match(/\[Download ([^\]]+)\](?:\(|\[)([^\)]+)(?:\)|\])/);
             if (downloadMatch) {
@@ -269,29 +263,45 @@ export default function ChatPage({
                 `<a href="javascript:void(0)" class="text-blue-600 hover:underline flex items-center gap-1" onclick="window.downloadFile('${process.env.NEXT_PUBLIC_API_URL}/chat/download/${fileId}', '${filename}')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Download ${filename}</a>`
               );
             }
-            
+
             // Format datasource references [source name]
             if (connectedSources?.length) {
               line = line.replace(/\[([^\]]+)\]/g, (match, sourceName) => {
                 const source = connectedSources.find(s => s.name === sourceName);
-                if (source) {
-                  return `<a href="javascript:void(0)" class="text-blue-600 hover:underline" onclick="window.selectSource('${messageId}', ${source.id})">[${sourceName}]</a>`;
+                if (!source) return match;
+
+                // Determine icon based on source type
+                let icon;
+                if (source.connection_settings?.file_path?.toLowerCase().endsWith('.pdf')) {
+                  icon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>`;
+                } else if (source.source_type === 'web_scraper') {
+                  icon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+                } else {
+                  icon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
                 }
-                return match;
+
+                return `<a href="javascript:void(0)" class="text-blue-600 hover:underline flex items-center gap-1" onclick="window.handleSourceClick(${JSON.stringify(source)})">${icon}[${sourceName}]</a>`;
               });
             }
-            
+
             // Format citation numbers [n]
             if (citations?.length) {
               line = line.replace(/\[(\d+)\]/g, (match, num) => {
                 const index = parseInt(num) - 1;
                 if (citations[index]) {
-                  return `<a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">[${num}]</a>`;
+                  return `<a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    [${num}]
+                  </a>`;
                 }
                 return match;
               });
             }
-            
+
             return line.trim();
           })
           .filter(line => line.length > 0)
@@ -312,14 +322,14 @@ export default function ChatPage({
             Authorization: `Bearer ${session?.user.accessToken}`,
           },
         });
-        
+
         if (!response.ok) {
           throw new Error(`Failed to download file: ${response.statusText}`);
         }
-        
+
         // Get the content type
         const contentType = response.headers.get('content-type');
-        
+
         // Create blob based on content type
         const blob = await response.blob();
         const downloadUrl = window.URL.createObjectURL(blob);
@@ -356,40 +366,40 @@ export default function ChatPage({
   // Update the handleSendMessage function
   const handleSendMessage = async (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string, selectedSourceIds?: string[]) => {
     if (!agent || !session) return;
-    
+
     console.log('ChatPage received selected source IDs:', selectedSourceIds);
-    
+
     // Strip HTML tags from the message
     const strippedMessage = message.replace(/<[^>]*>/g, '');
-    
+
     // Check if the message is asking about data sources or information
     const isDataSourceQuery = /data\s*sources?|information|reference|source|documentation/i.test(strippedMessage);
-    
+
     const formData = new FormData();
     formData.append('content', strippedMessage);
     formData.append('model', selectedModel);
-    
+
     // Add selected source IDs to the request if they exist
     if (selectedSourceIds && selectedSourceIds.length > 0) {
       formData.append('source_ids', JSON.stringify(selectedSourceIds));
       console.log('Adding source IDs to FormData:', JSON.stringify(selectedSourceIds));
     }
-    
+
     if (files && files.length > 0) {
       files.forEach((file) => {
         formData.append('files', file);
       });
     }
 
-    const newMessage: ChatMessage = { 
-      role: "user", 
+    const newMessage: ChatMessage = {
+      role: "user",
       content: strippedMessage,
       model: selectedModel,
       files: files || [],
       attachments: [],
       showDataSources: isDataSourceQuery
     };
-    
+
     const updatedHistory = [...chatHistory, newMessage];
     setChatHistory(updatedHistory);
 
@@ -411,10 +421,10 @@ export default function ChatPage({
       }
 
       const assistantResponse = await response.json();
-      
+
       // Format the content and handle download links
       const formattedContent = formatContent(assistantResponse.content, assistantResponse.id?.toString() || '', assistantResponse.citations, assistantResponse.connected_sources);
-      
+
       // Create the assistant message with all the new fields
       const assistantMessage: ChatMessage = {
         ...assistantResponse,
@@ -450,7 +460,7 @@ export default function ChatPage({
         showDataSources: false
       };
       setChatHistory([...updatedHistory, errorMessage]);
-      
+
       toast.error(error instanceof Error ? error.message : 'Failed to send message');
     }
   };
@@ -521,7 +531,7 @@ export default function ChatPage({
       model: "sonar",
       attachments: []
     };
-    
+
     setChatHistory([...chatHistory, queryMessage]);
 
     try {
@@ -542,10 +552,10 @@ export default function ChatPage({
       }
 
       const searchResult = await response.json();
-      
+
       // Format the content with citations
       const formattedContent = formatContent(searchResult.content, searchResult.id?.toString() || '', searchResult.citations, searchResult.connected_sources);
-      
+
       // Create the result message with all metadata
       const resultMessage: ChatMessage = {
         ...searchResult,
@@ -564,14 +574,14 @@ export default function ChatPage({
 
     } catch (error) {
       console.error("Error in web search:", error);
-      
+
       const errorMessage: ChatMessage = {
         role: "assistant",
         content: "Sorry, I encountered an error while performing the web search. Please try again later.",
         model: "sonar",
         attachments: []
       };
-      
+
       setChatHistory(prev => [...prev, errorMessage]);
       toast.error(error instanceof Error ? error.message : 'Failed to perform web search');
     }
@@ -580,7 +590,7 @@ export default function ChatPage({
   // Update the message rendering to include images
   const renderMessage = (msg: ChatMessage, index: number) => {
     const messageId = msg.id?.toString() || `msg-${index}`;
-    
+
     // Generate a unique key using timestamp or created_at if available
     const getUniqueKey = (prefix: string) => {
       const timestamp = msg.created_at ? new Date(msg.created_at).getTime() : Date.now();
@@ -626,7 +636,7 @@ export default function ChatPage({
       // Show sources button for web search messages or when showDataSources is true
       const hasSearchResults = Array.isArray(msg.search_results) && msg.search_results.length > 0;
       const hasConnectedSources = Array.isArray(msg.connected_sources) && msg.connected_sources.length > 0;
-      const shouldShowSources = (msg.model === "sonar" || msg.showDataSources) && 
+      const shouldShowSources = (msg.model === "sonar" || msg.showDataSources) &&
         (hasSearchResults || hasConnectedSources);
 
       return (
@@ -661,11 +671,61 @@ export default function ChatPage({
                           <div
                             key={getUniqueKey(`source-${source.id}`)}
                             data-source-id={source.id}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors duration-200 ${
-                              selectedSourcesMap[messageId] === source.id 
-                                ? 'bg-blue-50 border-blue-200' 
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors duration-200 cursor-pointer ${selectedSourcesMap[messageId] === source.id
+                                ? 'bg-blue-50 border-blue-200'
                                 : 'bg-white border-gray-200'
-                            }`}
+                              }`}
+                            onClick={async () => {
+                              console.log(source);
+                              try {
+                                if (source.type === 'web_scraper') {
+                                  const response = await fetch(
+                                    `${process.env.NEXT_PUBLIC_API_URL}/data-sources/${source.id}/content`,
+                                    {
+                                      headers: {
+                                        Authorization: `Bearer ${session?.user.accessToken}`,
+                                      },
+                                    }
+                                  );
+
+                                  if (!response.ok) {
+                                    throw new Error('Failed to fetch content');
+                                  }
+
+                                  const data = await response.json();
+                                  if (data.url) {
+                                    window.open(data.url, '_blank');
+                                  }
+                                } else if (source.type === 'file_upload') {
+                                  const response = await fetch(
+                                    `${process.env.NEXT_PUBLIC_API_URL}/data-sources/${source.id}/content`,
+                                    {
+                                      headers: {
+                                        Authorization: `Bearer ${session?.user.accessToken}`,
+                                      },
+                                    }
+                                  );
+
+                                  if (!response.ok) {
+                                    throw new Error('Failed to fetch file');
+                                  }
+
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  
+                                  // Open in new tab instead of downloading
+                                  window.open(url, '_blank');
+                                  
+                                  // Clean up URL object
+                                  setTimeout(() => window.URL.revokeObjectURL(url), 100);
+                                } else {
+                                  toast.info('Content viewing not supported for this source type');
+                                }
+                              } catch (error) {
+                                console.error('Error viewing source content:', error);
+                                toast.error('Failed to view source content');
+                              }
+                            }}
                           >
                             <div className="relative w-4 h-4">
                               <img
@@ -684,9 +744,9 @@ export default function ChatPage({
                 {shouldShowSources && (
                   <Sheet>
                     <SheetTrigger asChild>
-                      <Button 
+                      <Button
                         variant="outline"
-                        size="sm" 
+                        size="sm"
                         className="mt-2 text-xs flex items-center gap-1 bg-white"
                         data-source-details
                       >
@@ -698,15 +758,15 @@ export default function ChatPage({
                       <SheetHeader>
                         <SheetTitle>Sources</SheetTitle>
                       </SheetHeader>
-                      <div className="mt-6 space-y-6">                        
+                      <div className="mt-6 space-y-6">
                         {hasSearchResults && (
                           <div>
                             <h4 className="font-medium mb-2">Web Search Results</h4>
                             <div className="space-y-4">
                               {msg.search_results?.map((result, idx) => (
                                 <div key={getUniqueKey(`result-${idx}`)} className="border-b border-gray-100 pb-4">
-                                  <a 
-                                    href={result.url} 
+                                  <a
+                                    href={result.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-blue-600 hover:underline font-medium"
@@ -754,16 +814,70 @@ export default function ChatPage({
     return iconMap[sourceType] || "/data_icon/file-icon.svg";
   };
 
+  // Add this new function before the return statement
+  const handleSourceClick = async (source: ConnectedSource) => {
+    if (!source || !session) return;
+
+    try {
+      if (source.source_type === 'web_scraper' && source.connection_settings?.url) {
+        // For web sources, open in new tab
+        window.open(source.connection_settings.url, '_blank');
+      } else if (source.connection_settings?.file_path) {
+        // For files (including PDFs), fetch and open the file
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/data-sources/${source.id}/content`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.accessToken}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch file');
+        }
+
+        // Create blob from response
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        // Open in new tab
+        window.open(url, '_blank');
+
+        // Clean up
+        setTimeout(() => window.URL.revokeObjectURL(url), 100);
+      } else {
+        // For other sources, use the original behavior
+        setSelectedSourcesMap(prev => ({
+          ...prev,
+          [source.id]: source.id
+        }));
+        const sourceElement = document.querySelector(`[data-source-id="${source.id}"]`);
+        if (sourceElement) {
+          sourceElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    } catch (error) {
+      console.error('Error handling source click:', error);
+      toast.error('Failed to open source');
+    }
+  };
+
+  // Add handleSourceClick to window object
+  useEffect(() => {
+    (window as any).handleSourceClick = handleSourceClick;
+  }, [session]);
+
   return (
     <div className="h-[87vh] flex overflow-hidden">
       <div className="flex-1 flex flex-col bg-white overflow-hidden">
         <div className="sticky top-0 z-10 bg-white pt-4 pb-2 px-4 border-b">
           <div className="flex flex-col gap-4">
-          <div className="max-w-[200px]">
-            <ModelSelector 
-              value={selectedModel}
-              onChange={handleModelChange}
-            />
+            <div className="max-w-[200px]">
+              <ModelSelector
+                value={selectedModel}
+                onChange={handleModelChange}
+              />
             </div>
           </div>
         </div>
@@ -795,8 +909,8 @@ export default function ChatPage({
         <div className="sticky bottom-0 z-10 w-full p-6 bg-gray-50">
           <div className="flex gap-2 items-center">
             <div className="flex-1">
-              <MessageInput 
-                onSend={handleSendMessage} 
+              <MessageInput
+                onSend={handleSendMessage}
                 onWebSearch={handleWebSearch}
               />
             </div>
