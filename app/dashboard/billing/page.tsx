@@ -5,6 +5,7 @@ import CheckIcon from '@mui/icons-material/Check'
 import { useState, useEffect } from 'react'
 import { CircularProgress } from '@mui/material'
 import { useSession } from "next-auth/react"
+import { PricePlan as PricePlanType } from '@/app/types/price-plan'
 
 const PlanCard = styled(Card)(({ theme }) => ({
   padding: theme.spacing(4),
@@ -114,7 +115,83 @@ export default function BillingPage() {
   const [openSeatsDialog, setOpenSeatsDialog] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [additionalSeats, setAdditionalSeats] = useState(0)
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null)
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchPricePlans = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/price-plans`, {
+          headers: {
+            'Authorization': `Bearer ${session?.user?.accessToken}`
+          },
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch price plans');
+        }
+
+        const pricePlans: PricePlanType[] = await response.json();
+        
+        // Transform API price plans to match our UI format
+        const transformedPlans: Plan[] = pricePlans
+          .filter(plan => plan.is_active)
+          .map(plan => ({
+            name: plan.name,
+            price: billingPeriod === 'annual' ? parseFloat(plan.annual_price) : parseFloat(plan.monthly_price),
+            seats: plan.included_seats,
+            seatPrice: parseFloat(plan.additional_seat_price),
+            planType: plan.plan_type,
+            features: plan.features.map(feature => ({
+              text: feature.description,
+              bold: [] // You might want to add logic to determine bold parts
+            }))
+          }));
+
+        // Add the enterprise plan since it's handled differently
+        transformedPlans.push({
+          name: 'Enterprise',
+          price: 'Custom plan',
+          planType: 'enterprise',
+          features: [
+            {
+              text: 'Custom solutions tailored for your business.',
+              bold: []
+            },
+            {
+              text: 'Unlimited Agentic AI',
+              bold: ['Unlimited']
+            },
+            {
+              text: 'Dedicated support',
+              bold: []
+            },
+            {
+              text: 'Private cloud / self host',
+              bold: []
+            },
+            {
+              text: 'Custom workflow automations',
+              bold: []
+            }
+          ]
+        });
+
+        setPlans(transformedPlans);
+      } catch (err) {
+        console.error('Error fetching price plans:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load price plans');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (session?.user?.accessToken) {
+      fetchPricePlans();
+    }
+  }, [session?.user?.accessToken, billingPeriod]);
 
   // Add useEffect to check for session ID in URL params
   useEffect(() => {
@@ -218,123 +295,6 @@ export default function BillingPage() {
     }
   };
 
-  const plans: Plan[] = [
-    {
-      name: 'Individual',
-      price: billingPeriod === 'annual' ? 348 : 39,
-      seats: 1,
-      seatPrice: 7,
-      planType: 'individual',
-      features: [
-        {
-          text: 'Connect to AI models including OpenAI, Google Gemini, Anthropic',
-          bold: []
-        },
-        {
-          text: '1 AI Agent',
-          bold: ['1 AI Agent']
-        },
-        {
-          text: 'Connect your knowledge base with 50 MB of files',
-          bold: ['50 MB']
-        },
-        {
-          text: 'Dashboard analytics',
-          bold: []
-        }
-      ]
-    },
-    {
-      name: 'Standard',
-      price: billingPeriod === 'annual' ? 888 : 99,
-      seats: 2,
-      seatPrice: 7,
-      planType: 'standard',
-      features: [
-        {
-          text: 'Connect to AI models including OpenAI, Google Gemini, Anthropic',
-          bold: []
-        },
-        {
-          text: 'Create 10 AI agents and assistants',
-          bold: ['10 AI agents']
-        },
-        {
-          text: 'Connect your knowledge base with 1 GB of files',
-          bold: ['1 GB']
-        },
-        {
-          text: 'Dashboard analytics',
-          bold: []
-        },
-        {
-          text: 'Workflow automations included',
-          bold: []
-        }
-      ]
-    },
-    {
-      name: 'SMB',
-      price: billingPeriod === 'annual' ? 1416 : 157,
-      seats: 3,
-      seatPrice: 5,
-      planType: 'smb',
-      features: [
-        {
-          text: 'Connect to AI models including OpenAI, Google Gemini, Anthropic, OpenSource',
-          bold: []
-        },
-        {
-          text: 'Create unlimited AI agents and assistants',
-          bold: ['unlimited AI agents']
-        },
-        {
-          text: 'Deploy& integrate agents into your workflows or websites',
-          bold: []
-        },
-        {
-          text: 'Connect your knowledge base with 10 GB of files',
-          bold: ['10 GB']
-        },
-        {
-          text: 'Dashboard analytics',
-          bold: []
-        },
-        {
-          text: 'Workflow automations included',
-          bold: []
-        }
-      ]
-    },
-    {
-      name: 'Enterprise',
-      price: 'Custom plan',
-      planType: 'enterprise',
-      features: [
-        {
-          text: 'Custom solutions tailored for your business.',
-          bold: []
-        },
-        {
-          text: 'Unlimited Agentic AI',
-          bold: ['Unlimited']
-        },
-        {
-          text: 'Dedicated support',
-          bold: []
-        },
-        {
-          text: 'Private cloud / self host',
-          bold: []
-        },
-        {
-          text: 'Custom workflow automations',
-          bold: []
-        }
-      ]
-    }
-  ]
-
   // Helper function to render text with bold parts
   const renderFeatureText = (feature: { text: string, bold: string[] }) => {
     if (feature.bold.length === 0) return feature.text;
@@ -363,107 +323,115 @@ export default function BillingPage() {
         </Box>
       )}
 
-      <Box sx={{ textAlign: 'center', mb: 6 }}>
-        <Typography variant="h4" sx={{ mb: 3 }}>
-          Plans for Startups to Fortune 500 Enterprises.
-        </Typography>
-
-        <StyledToggleButtonGroup
-          value={billingPeriod === 'annual' ? 'annually' : 'monthly'}
-          exclusive
-          onChange={handleBillingPeriodChange}
-        >
-          <ToggleButton value="annually">
-            Pay annually (save 25%)
-          </ToggleButton>
-          <ToggleButton value="monthly">
-            Monthly
-          </ToggleButton>
-        </StyledToggleButtonGroup>
-      </Box>
-
-      <Box sx={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: 3
-      }}>
-        {plans.map((plan) => (
-          <PlanCard key={plan.name} elevation={2}>
-            {plan.name === 'SMB' && (
-              <BestValueLabel>
-                Best value
-              </BestValueLabel>
-            )}
-            
-            <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', textAlign: 'center' }}>{plan.name}</Typography>
-            
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          <Box sx={{ textAlign: 'center', mb: 6 }}>
             <Typography variant="h4" sx={{ mb: 3 }}>
-              {typeof plan.price === 'number' ? (
-                <>
-                  ${plan.price}
-                  <Typography component="span" variant="body1" color="text.secondary">
-                    {billingPeriod === 'annual' ? ' / year' : ' / month'}
-                  </Typography>
-                </>
-              ) : (
-                plan.price
-              )}
+              Plans for Startups to Fortune 500 Enterprises.
             </Typography>
 
-            {plan.planType === 'enterprise' ? (
-              <ContactSalesButton 
-                variant="contained"
-                fullWidth
-                href="https://tidycal.com/fatima-awan/finiite-ai-demo"
-                LinkComponent="a"
-                sx={{ textDecoration: 'none' }}
-              >
-                contact sales
-              </ContactSalesButton>
-            ) : (
-              <SelectButton 
-                variant="contained"
-                fullWidth
-                onClick={() => {
-                  if (plan.planType === 'individual' || plan.planType === 'standard' || plan.planType === 'smb') {
-                    handleCheckout(plan.planType);
-                  }
-                }}
-                disabled={loadingAction.type === 'select' && loadingAction.planType === plan.planType}
-              >
-                {loadingAction.type === 'select' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'Select'}
-              </SelectButton>
-            )}
+            <StyledToggleButtonGroup
+              value={billingPeriod === 'annual' ? 'annually' : 'monthly'}
+              exclusive
+              onChange={handleBillingPeriodChange}
+            >
+              <ToggleButton value="annually">
+                Pay annually (save 25%)
+              </ToggleButton>
+              <ToggleButton value="monthly">
+                Monthly
+              </ToggleButton>
+            </StyledToggleButtonGroup>
+          </Box>
 
-            {plan.seats && plan.planType !== 'enterprise' && (
-              <>
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  {plan.seats} {plan.seats === 1 ? 'seat' : 'seats'} included
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+            gap: 3
+          }}>
+            {plans.map((plan) => (
+              <PlanCard key={plan.name} elevation={2}>
+                {plan.planType === 'smb' && (
+                  <BestValueLabel>
+                    Best value
+                  </BestValueLabel>
+                )}
+                
+                <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', textAlign: 'center' }}>{plan.name}</Typography>
+                
+                <Typography variant="h4" sx={{ mb: 3 }}>
+                  {typeof plan.price === 'number' ? (
+                    <>
+                      ${plan.price}
+                      <Typography component="span" variant="body1" color="text.secondary">
+                        {billingPeriod === 'annual' ? ' / year' : ' / month'}
+                      </Typography>
+                    </>
+                  ) : (
+                    plan.price
+                  )}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  add more seats at ${plan.seatPrice}/user/month
-                </Typography>
-                <AddSeatsButton 
-                  variant="outlined" 
-                  fullWidth 
-                  sx={{ mb: 3 }}
-                  onClick={() => handleOpenSeatsDialog(plan)}
-                  disabled={loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType}
-                >
-                  {loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'add seats'}
-                </AddSeatsButton>
-              </>
-            )}
 
-            {plan.features.map((feature, index) => (
-              <FeatureItem key={index} sx={{ mb: 1 }}>
-                <CheckIcon sx={{ color: 'black' }} />
-                {renderFeatureText(feature)}
-              </FeatureItem>
+                {plan.planType === 'enterprise' ? (
+                  <ContactSalesButton 
+                    variant="contained"
+                    fullWidth
+                    href="https://tidycal.com/fatima-awan/finiite-ai-demo"
+                    LinkComponent="a"
+                    sx={{ textDecoration: 'none' }}
+                  >
+                    contact sales
+                  </ContactSalesButton>
+                ) : (
+                  <SelectButton 
+                    variant="contained"
+                    fullWidth
+                    onClick={() => {
+                      if (plan.planType === 'individual' || plan.planType === 'standard' || plan.planType === 'smb') {
+                        handleCheckout(plan.planType);
+                      }
+                    }}
+                    disabled={loadingAction.type === 'select' && loadingAction.planType === plan.planType}
+                  >
+                    {loadingAction.type === 'select' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'Select'}
+                  </SelectButton>
+                )}
+
+                {plan.seats && plan.planType !== 'enterprise' && (
+                  <>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      {plan.seats} {plan.seats === 1 ? 'seat' : 'seats'} included
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      add more seats at ${plan.seatPrice}/user/month
+                    </Typography>
+                    <AddSeatsButton 
+                      variant="outlined" 
+                      fullWidth 
+                      sx={{ mb: 3 }}
+                      onClick={() => handleOpenSeatsDialog(plan)}
+                      disabled={loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType}
+                    >
+                      {loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'add seats'}
+                    </AddSeatsButton>
+                  </>
+                )}
+
+                {plan.features.map((feature, index) => (
+                  <FeatureItem key={index} sx={{ mb: 1 }}>
+                    <CheckIcon sx={{ color: 'black' }} />
+                    {renderFeatureText(feature)}
+                  </FeatureItem>
+                ))}
+              </PlanCard>
             ))}
-          </PlanCard>
-        ))}
-      </Box>
+          </Box>
+        </>
+      )}
 
       <Dialog open={openSeatsDialog} onClose={handleCloseSeatsDialog}>
         <DialogTitle>Add Seats</DialogTitle>
