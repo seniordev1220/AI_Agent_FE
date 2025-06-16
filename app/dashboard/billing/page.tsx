@@ -391,6 +391,7 @@ export default function BillingPage() {
                   variant="contained"
                   fullWidth
                   onClick={() => {
+                    console.log(plan.planType);
                     if (plan.planType === 'individual' || plan.planType === 'standard' || plan.planType === 'smb') {
                       handleCheckout(plan.planType);
                     }
