@@ -4,8 +4,7 @@ import { styled } from '@mui/material/styles'
 import CheckIcon from '@mui/icons-material/Check'
 import { useState, useEffect } from 'react'
 import { CircularProgress } from '@mui/material'
-import { useSession } from 'next-auth/react'
-import { PricePlan } from '@/app/types/price-plan'
+import { useSession } from "next-auth/react"
 
 const PlanCard = styled(Card)(({ theme }) => ({
   padding: theme.spacing(4),
@@ -91,49 +90,74 @@ const StyledToggleButtonGroup = styled(ToggleButtonGroup)(({ theme }) => ({
   }
 }))
 
+type PlanType = 'individual' | 'standard' | 'smb' | 'enterprise';
+
+interface Plan {
+  name: string;
+  price: number | string;
+  seats?: number;
+  seatPrice?: number;
+  planType: PlanType;
+  features: Array<{
+    text: string;
+    bold: string[];
+  }>;
+}
+
 export default function BillingPage() {
+  const { data: session } = useSession()
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual')
   const [loadingAction, setLoadingAction] = useState<{
     type: 'select' | 'add_seats' | null;
     planType: 'individual' | 'standard' | 'smb' | null;
   }>({ type: null, planType: null })
   const [openSeatsDialog, setOpenSeatsDialog] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState<PricePlan | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [additionalSeats, setAdditionalSeats] = useState(0)
-  const [error, setError] = useState<string | null>(null)
-  const [plans, setPlans] = useState<PricePlan[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null);
 
-  const { data: session } = useSession()
-
+  // Add useEffect to check for session ID in URL params
   useEffect(() => {
-    const fetchPlans = async () => {
-      if (!session?.user?.accessToken) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    const status = urlParams.get('status');
 
-      try {
-        setIsLoading(true);
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/price-plans`, {
-          headers: {
-            'Authorization': `Bearer ${session.user.accessToken}`,
-          },
-        });
+    if (sessionId && status === 'success') {
+      retrieveCheckoutSession(sessionId);
+    }
+  }, []);
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch price plans');
-        }
+  const retrieveCheckoutSession = async (sessionId: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment/retrieve-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.accessToken}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          session_id: sessionId
+        })
+      });
 
-        const data = await response.json();
-        setPlans(data);
-      } catch (error) {
-        console.error('Error fetching price plans:', error);
-        setError('Failed to load price plans');
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to retrieve checkout session');
       }
-    };
 
-    fetchPlans();
-  }, [session]);
+      const data = await response.json();
+      
+      // Handle successful subscription
+      if (data.session.payment_status === 'paid') {
+        // You can add additional UI feedback here
+        console.log('Payment successful:', data);
+      }
+    } catch (error) {
+      console.error('Error retrieving checkout session:', error);
+      setError(error instanceof Error ? error.message : 'Failed to verify payment status');
+    }
+  };
 
   const handleBillingPeriodChange = (event: React.MouseEvent<HTMLElement>, newPeriod: string | null) => {
     if (newPeriod === 'annually') {
@@ -143,7 +167,7 @@ export default function BillingPage() {
     }
   }
 
-  const handleOpenSeatsDialog = (plan: PricePlan) => {
+  const handleOpenSeatsDialog = (plan: Plan) => {
     setSelectedPlan(plan)
     setAdditionalSeats(0)
     setOpenSeatsDialog(true)
@@ -164,8 +188,9 @@ export default function BillingPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.user?.accessToken}`,
+          'Authorization': `Bearer ${session?.user?.accessToken}`
         },
+        credentials: 'include',
         body: JSON.stringify({
           plan_type: planType,
           billing_interval: billingPeriod,
@@ -180,7 +205,10 @@ export default function BillingPage() {
         throw new Error(errorData.detail || 'Failed to create checkout session');
       }
 
-      const { url } = await response.json();
+      const { url, sessionId } = await response.json();
+      
+      localStorage.setItem('checkoutSessionId', sessionId);
+      
       window.location.href = url;
     } catch (error) {
       console.error('Error during checkout:', error);
@@ -189,6 +217,123 @@ export default function BillingPage() {
       setLoadingAction({ type: null, planType: null });
     }
   };
+
+  const plans: Plan[] = [
+    {
+      name: 'Individual',
+      price: billingPeriod === 'annual' ? 348 : 39,
+      seats: 1,
+      seatPrice: 7,
+      planType: 'individual',
+      features: [
+        {
+          text: 'Connect to AI models including OpenAI, Google Gemini, Anthropic',
+          bold: []
+        },
+        {
+          text: '1 AI Agent',
+          bold: ['1 AI Agent']
+        },
+        {
+          text: 'Connect your knowledge base with 50 MB of files',
+          bold: ['50 MB']
+        },
+        {
+          text: 'Dashboard analytics',
+          bold: []
+        }
+      ]
+    },
+    {
+      name: 'Standard',
+      price: billingPeriod === 'annual' ? 888 : 99,
+      seats: 2,
+      seatPrice: 7,
+      planType: 'standard',
+      features: [
+        {
+          text: 'Connect to AI models including OpenAI, Google Gemini, Anthropic',
+          bold: []
+        },
+        {
+          text: 'Create 10 AI agents and assistants',
+          bold: ['10 AI agents']
+        },
+        {
+          text: 'Connect your knowledge base with 1 GB of files',
+          bold: ['1 GB']
+        },
+        {
+          text: 'Dashboard analytics',
+          bold: []
+        },
+        {
+          text: 'Workflow automations included',
+          bold: []
+        }
+      ]
+    },
+    {
+      name: 'SMB',
+      price: billingPeriod === 'annual' ? 1416 : 157,
+      seats: 3,
+      seatPrice: 5,
+      planType: 'smb',
+      features: [
+        {
+          text: 'Connect to AI models including OpenAI, Google Gemini, Anthropic, OpenSource',
+          bold: []
+        },
+        {
+          text: 'Create unlimited AI agents and assistants',
+          bold: ['unlimited AI agents']
+        },
+        {
+          text: 'Deploy& integrate agents into your workflows or websites',
+          bold: []
+        },
+        {
+          text: 'Connect your knowledge base with 10 GB of files',
+          bold: ['10 GB']
+        },
+        {
+          text: 'Dashboard analytics',
+          bold: []
+        },
+        {
+          text: 'Workflow automations included',
+          bold: []
+        }
+      ]
+    },
+    {
+      name: 'Enterprise',
+      price: 'Custom plan',
+      planType: 'enterprise',
+      features: [
+        {
+          text: 'Custom solutions tailored for your business.',
+          bold: []
+        },
+        {
+          text: 'Unlimited Agentic AI',
+          bold: ['Unlimited']
+        },
+        {
+          text: 'Dedicated support',
+          bold: []
+        },
+        {
+          text: 'Private cloud / self host',
+          bold: []
+        },
+        {
+          text: 'Custom workflow automations',
+          bold: []
+        }
+      ]
+    }
+  ]
 
   // Helper function to render text with bold parts
   const renderFeatureText = (feature: { text: string, bold: string[] }) => {
@@ -207,14 +352,6 @@ export default function BillingPage() {
       />
     );
   };
-
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ p: 4, maxWidth: '1800px', margin: '0 auto' }}>
@@ -251,7 +388,7 @@ export default function BillingPage() {
         gap: 3
       }}>
         {plans.map((plan) => (
-          <PlanCard key={plan.id} elevation={2}>
+          <PlanCard key={plan.name} elevation={2}>
             {plan.name === 'SMB' && (
               <BestValueLabel>
                 Best value
@@ -261,19 +398,19 @@ export default function BillingPage() {
             <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', textAlign: 'center' }}>{plan.name}</Typography>
             
             <Typography variant="h4" sx={{ mb: 3 }}>
-              {plan.plan_type === 'enterprise' ? (
-                'Custom plan'
-              ) : (
+              {typeof plan.price === 'number' ? (
                 <>
-                  ${billingPeriod === 'annual' ? plan.price_annual : plan.price_monthly}
+                  ${plan.price}
                   <Typography component="span" variant="body1" color="text.secondary">
                     {billingPeriod === 'annual' ? ' / year' : ' / month'}
                   </Typography>
                 </>
+              ) : (
+                plan.price
               )}
             </Typography>
 
-            {plan.plan_type === 'enterprise' ? (
+            {plan.planType === 'enterprise' ? (
               <ContactSalesButton 
                 variant="contained"
                 fullWidth
@@ -288,32 +425,32 @@ export default function BillingPage() {
                 variant="contained"
                 fullWidth
                 onClick={() => {
-                  if (plan.plan_type === 'individual' || plan.plan_type === 'standard' || plan.plan_type === 'smb') {
-                    handleCheckout(plan.plan_type);
+                  if (plan.planType === 'individual' || plan.planType === 'standard' || plan.planType === 'smb') {
+                    handleCheckout(plan.planType);
                   }
                 }}
-                disabled={loadingAction.type === 'select' && loadingAction.planType === plan.plan_type}
+                disabled={loadingAction.type === 'select' && loadingAction.planType === plan.planType}
               >
-                {loadingAction.type === 'select' && loadingAction.planType === plan.plan_type ? <CircularProgress size={24} color="inherit" /> : 'Select'}
+                {loadingAction.type === 'select' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'Select'}
               </SelectButton>
             )}
 
-            {plan.seats > 0 && plan.plan_type !== 'enterprise' && (
+            {plan.seats && plan.planType !== 'enterprise' && (
               <>
                 <Typography variant="body2" sx={{ mt: 1 }}>
                   {plan.seats} {plan.seats === 1 ? 'seat' : 'seats'} included
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  add more seats at ${plan.seat_price}/user/month
+                  add more seats at ${plan.seatPrice}/user/month
                 </Typography>
                 <AddSeatsButton 
                   variant="outlined" 
                   fullWidth 
                   sx={{ mb: 3 }}
                   onClick={() => handleOpenSeatsDialog(plan)}
-                  disabled={loadingAction.type === 'add_seats' && loadingAction.planType === plan.plan_type}
+                  disabled={loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType}
                 >
-                  {loadingAction.type === 'add_seats' && loadingAction.planType === plan.plan_type ? <CircularProgress size={24} color="inherit" /> : 'add seats'}
+                  {loadingAction.type === 'add_seats' && loadingAction.planType === plan.planType ? <CircularProgress size={24} color="inherit" /> : 'add seats'}
                 </AddSeatsButton>
               </>
             )}
@@ -333,7 +470,7 @@ export default function BillingPage() {
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 2 }}>
             {selectedPlan?.seats} seats included in the base plan.
-            Each additional seat costs ${selectedPlan?.seat_price}/user/month.
+            Each additional seat costs ${selectedPlan?.seatPrice}/user/month.
           </Typography>
           <TextField
             autoFocus
@@ -347,7 +484,7 @@ export default function BillingPage() {
           />
           {additionalSeats > 0 && (
             <Typography variant="body2" sx={{ mt: 2 }}>
-              Additional cost: ${(additionalSeats * (selectedPlan?.seat_price || 0)).toFixed(2)}/month
+              Additional cost: ${(additionalSeats * (selectedPlan?.seatPrice || 0)).toFixed(2)}/month
             </Typography>
           )}
         </DialogContent>
@@ -357,15 +494,15 @@ export default function BillingPage() {
           </Button>
           <Button 
             onClick={() => {
-              if (selectedPlan && (selectedPlan.plan_type === 'individual' || selectedPlan.plan_type === 'standard' || selectedPlan.plan_type === 'smb')) {
-                handleCheckout(selectedPlan.plan_type, (selectedPlan.seats || 1) + additionalSeats);
+              if (selectedPlan && (selectedPlan.planType === 'individual' || selectedPlan.planType === 'standard' || selectedPlan.planType === 'smb')) {
+                handleCheckout(selectedPlan.planType, (selectedPlan.seats || 1) + additionalSeats);
                 handleCloseSeatsDialog();
               }
             }} 
             variant="contained"
-            disabled={loadingAction.type === 'add_seats' && loadingAction.planType === selectedPlan?.plan_type}
+            disabled={loadingAction.type === 'add_seats' && loadingAction.planType === selectedPlan?.planType}
           >
-            {loadingAction.type === 'add_seats' && loadingAction.planType === selectedPlan?.plan_type ? <CircularProgress size={20} /> : 'Proceed to Checkout'}
+            {loadingAction.type === 'add_seats' && loadingAction.planType === selectedPlan?.planType ? <CircularProgress size={20} /> : 'Proceed to Checkout'}
           </Button>
         </DialogActions>
       </Dialog>
