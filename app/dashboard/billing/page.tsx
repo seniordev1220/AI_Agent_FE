@@ -178,7 +178,7 @@ export default function BillingPage() {
             }
           ]
         });
-
+        console.log(transformedPlans);
         setPlans(transformedPlans);
       } catch (error) {
         console.error('Error fetching price plans:', error);
