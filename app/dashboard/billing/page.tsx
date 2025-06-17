@@ -200,11 +200,18 @@ export default function BillingPage() {
 
   const retrieveCheckoutSession = async (sessionId: string) => {
     try {
+      // Check if we have a valid session with access token
+      if (!session?.user?.accessToken) {
+        console.error('No access token available');
+        setError('Authentication required. Please sign in again.');
+        return;
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment/retrieve-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.user?.accessToken}`
+          'Authorization': `Bearer ${session.user.accessToken}`
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -213,6 +220,11 @@ export default function BillingPage() {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          setError('Your session has expired. Please sign in again.');
+          // You might want to redirect to login page here
+          return;
+        }
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to retrieve checkout session');
       }
