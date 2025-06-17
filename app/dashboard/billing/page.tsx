@@ -5,7 +5,7 @@ import CheckIcon from '@mui/icons-material/Check'
 import { useState, useEffect } from 'react'
 import { CircularProgress } from '@mui/material'
 import { useSession } from "next-auth/react"
-import { PricePlan } from '@/app/types/price-plan'
+import { PricePlan, PricePlanFeature } from '@/app/types/price-plan'
 
 const PlanCard = styled(Card)(({ theme }) => ({
   padding: theme.spacing(4),
@@ -116,82 +116,76 @@ export default function BillingPage() {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [additionalSeats, setAdditionalSeats] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const [plans, setPlans] = useState<Plan[]>([])
+  const [pricePlans, setPricePlans] = useState<PricePlan[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchPricePlans = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/price-plans`, {
-          headers: {
-            'Authorization': `Bearer ${session?.user?.accessToken}`
-          },
-          credentials: 'include'
-        });
-
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/price-plans`)
         if (!response.ok) {
-          throw new Error('Failed to fetch price plans');
+          throw new Error('Failed to fetch price plans')
         }
-
-        const pricePlans: PricePlan[] = await response.json();
-        
-        // Transform API price plans to match our UI format
-        const transformedPlans: Plan[] = pricePlans
-          .filter(plan => plan.is_active)
-          .map(plan => ({
-            name: plan.name,
-            price: billingPeriod === 'annual' ? parseFloat(plan.annual_price) : parseFloat(plan.monthly_price),
-            seats: plan.included_seats,
-            seatPrice: parseFloat(plan.additional_seat_price),
-            planType: plan.plan_type,
-            features: plan.features.map(feature => ({
-              text: feature.description,
-              bold: [] // We'll keep this empty as we don't have bold text info from API
-            }))
-          }));
-
-        // Add the enterprise plan which is not in the database
-        transformedPlans.push({
-          name: 'Enterprise',
-          price: 'Custom plan',
-          planType: 'enterprise',
-          features: [
-            {
-              text: 'Custom solutions tailored for your business.',
-              bold: []
-            },
-            {
-              text: 'Unlimited Agentic AI',
-              bold: ['Unlimited']
-            },
-            {
-              text: 'Dedicated support',
-              bold: []
-            },
-            {
-              text: 'Private cloud / self host',
-              bold: []
-            },
-            {
-              text: 'Custom workflow automations',
-              bold: []
-            }
-          ]
-        });
-        console.log(transformedPlans);
-        setPlans(transformedPlans);
+        const data = await response.json()
+        setPricePlans(data)
       } catch (error) {
-        console.error('Error fetching price plans:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load price plans');
+        console.error('Error fetching price plans:', error)
+        setError(error instanceof Error ? error.message : 'Failed to fetch price plans')
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
-
-    if (session?.user?.accessToken) {
-      fetchPricePlans();
     }
-  }, [session?.user?.accessToken, billingPeriod]);
+
+    fetchPricePlans()
+  }, [])
+
+  // Convert API price plans to UI format
+  const convertFeatures = (features: PricePlanFeature[]) => {
+    return features.map(feature => ({
+      text: feature.description,
+      bold: [] // Since we don't have bold parts in the API response
+    }))
+  }
+
+  const enterprisePlan: Plan = {
+    name: 'Enterprise',
+    price: 'Custom plan',
+    planType: 'enterprise',
+    features: [
+      {
+        text: 'Custom solutions tailored for your business.',
+        bold: []
+      },
+      {
+        text: 'Unlimited Agentic AI',
+        bold: ['Unlimited']
+      },
+      {
+        text: 'Dedicated support',
+        bold: []
+      },
+      {
+        text: 'Private cloud / self host',
+        bold: []
+      },
+      {
+        text: 'Custom workflow automations',
+        bold: []
+      }
+    ]
+  }
+
+  const plans: Plan[] = [
+    ...pricePlans.map(plan => ({
+      name: plan.name,
+      price: billingPeriod === 'annual' ? parseFloat(plan.annual_price) : parseFloat(plan.monthly_price),
+      seats: plan.included_seats,
+      seatPrice: parseFloat(plan.additional_seat_price),
+      planType: plan.name.toLowerCase() as PlanType,
+      features: convertFeatures(plan.features)
+    })),
+    enterprisePlan
+  ]
 
   // Add useEffect to check for session ID in URL params
   useEffect(() => {
@@ -258,10 +252,15 @@ export default function BillingPage() {
 
   const handleCheckout = async (planType: 'individual' | 'standard' | 'smb', totalSeats?: number) => {
     setError(null);
-    console.log('totalSeats', totalSeats, planType)
     const actionType = totalSeats ? 'add_seats' : 'select';
     try {
       setLoadingAction({ type: actionType, planType });
+      
+      const selectedPlan = pricePlans.find(p => p.name.toLowerCase() === planType);
+      if (!selectedPlan) {
+        throw new Error('Selected plan not found');
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment/create-checkout-session`, {
         method: 'POST',
         headers: {
@@ -272,7 +271,8 @@ export default function BillingPage() {
         body: JSON.stringify({
           plan_type: planType,
           billing_interval: billingPeriod,
-          seats: totalSeats || 1,
+          seats: totalSeats || selectedPlan.included_seats,
+          stripe_price_id: billingPeriod === 'annual' ? selectedPlan.stripe_price_id_annual : selectedPlan.stripe_price_id_monthly,
           success_url: `${window.location.origin}/payment/success`,
           cancel_url: `${window.location.origin}/dashboard/billing`
         }),
@@ -343,19 +343,19 @@ export default function BillingPage() {
         </StyledToggleButtonGroup>
       </Box>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <Box sx={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: 3
-        }}>
-          {plans.map((plan) => (
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        gap: 3
+      }}>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          plans.map((plan) => (
             <PlanCard key={plan.name} elevation={2}>
-              {plan.name === 'SMB' && (
+              {pricePlans.find(p => p.name.toLowerCase() === plan.planType)?.is_best_value && (
                 <BestValueLabel>
                   Best value
                 </BestValueLabel>
@@ -391,7 +391,6 @@ export default function BillingPage() {
                   variant="contained"
                   fullWidth
                   onClick={() => {
-                    console.log(plan.planType);
                     if (plan.planType === 'individual' || plan.planType === 'standard' || plan.planType === 'smb') {
                       handleCheckout(plan.planType);
                     }
@@ -429,9 +428,9 @@ export default function BillingPage() {
                 </FeatureItem>
               ))}
             </PlanCard>
-          ))}
-        </Box>
-      )}
+          ))
+        )}
+      </Box>
 
       <Dialog open={openSeatsDialog} onClose={handleCloseSeatsDialog}>
         <DialogTitle>Add Seats</DialogTitle>
