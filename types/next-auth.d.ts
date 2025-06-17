@@ -7,6 +7,9 @@ declare module "next-auth" {
     accessToken?: string
     firstName?: string
     lastName?: string
+    trialStartDate?: string
+    isTrialExpired?: boolean
+    hasActiveSubscription?: boolean
   }
 
   interface Session {
@@ -17,6 +20,9 @@ declare module "next-auth" {
       accessToken?: string
       firstName?: string
       lastName?: string
+      trialStartDate?: string
+      isTrialExpired?: boolean
+      hasActiveSubscription?: boolean
     }
   }
 }

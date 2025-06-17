@@ -4,12 +4,20 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     
+    // Add trial start date to the sign-up request
+    const signupData = {
+      ...body,
+      trial_start_date: new Date().toISOString(),
+      is_trial_expired: false,
+      has_active_subscription: false
+    }
+    
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(signupData),
     })
 
     const data = await response.json()

@@ -2,6 +2,7 @@
 import type React from "react"
 import { Sidebar } from "@/components/dashboard/sidebar/sidebar"
 import { Header } from "@/components/dashboard/header"
+import { TrialStatusBanner } from "@/components/trial-status-banner"
 
 export default function DashboardLayout({
   children,
@@ -13,6 +14,7 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="md:ml-0 ml-16">
+          <TrialStatusBanner />
           <Header />
         </div>
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">

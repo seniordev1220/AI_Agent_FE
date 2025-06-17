@@ -57,6 +57,9 @@ export const authOptions = {
               name: userData.first_name,
               firstName: userData.first_name,
               lastName: userData.last_name,
+              trialStartDate: userData.trial_start_date || new Date().toISOString(),
+              isTrialExpired: userData.is_trial_expired || false,
+              hasActiveSubscription: userData.has_active_subscription || false,
             }
           }
 
@@ -101,6 +104,9 @@ export const authOptions = {
           const data = await response.json();
           if (data.access_token) {
             user.accessToken = data.access_token;
+            user.trialStartDate = data.trial_start_date || new Date().toISOString();
+            user.isTrialExpired = data.is_trial_expired || false;
+            user.hasActiveSubscription = data.has_active_subscription || false;
           }
         } catch (error) {
           console.error('Error storing Google user:', error);
@@ -117,6 +123,9 @@ export const authOptions = {
         token.name = user.name
         token.firstName = user.firstName
         token.lastName = user.lastName
+        token.trialStartDate = user.trialStartDate
+        token.isTrialExpired = user.isTrialExpired
+        token.hasActiveSubscription = user.hasActiveSubscription
       }
       return token
     },
@@ -128,7 +137,10 @@ export const authOptions = {
           image: session.user?.image,
           accessToken: token.accessToken,
           firstName: token.firstName,
-          lastName: token.lastName
+          lastName: token.lastName,
+          trialStartDate: token.trialStartDate,
+          isTrialExpired: token.isTrialExpired,
+          hasActiveSubscription: token.hasActiveSubscription
         }
       }
       return session
