@@ -273,8 +273,14 @@ export default function BillingPage() {
         throw new Error('Selected plan not found');
       }
 
-      // Calculate only the additional seats beyond what's included in the plan
-      const additionalSeats = actionType === 'add_seats' ? additionalSeatsRequested : 0;
+      // Calculate base price and additional seats price separately
+      const basePlanPrice = billingPeriod === 'annual' 
+        ? parseFloat(selectedPlan.annual_price)
+        : parseFloat(selectedPlan.monthly_price);
+
+      // Only calculate additional seats cost if there are additional seats
+      const additionalSeats = (actionType === 'add_seats' ? additionalSeatsRequested : 0) ?? 0;
+      const additionalSeatsCost = additionalSeats * parseFloat(selectedPlan.additional_seat_price);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment/create-checkout-session`, {
         method: 'POST',
@@ -286,8 +292,10 @@ export default function BillingPage() {
         body: JSON.stringify({
           plan_type: planType,
           billing_interval: billingPeriod,
-          additional_seats: additionalSeats, // Only send additional seats
-          base_seats: selectedPlan.included_seats, // Send base seats separately
+          base_price: basePlanPrice,
+          additional_seats: additionalSeats,
+          additional_seats_cost: additionalSeatsCost,
+          base_seats: selectedPlan.included_seats,
           stripe_price_id: billingPeriod === 'annual' ? selectedPlan.stripe_price_id_annual : selectedPlan.stripe_price_id_monthly,
           success_url: `${window.location.origin}/payment/success`,
           cancel_url: `${window.location.origin}/dashboard/billing`
