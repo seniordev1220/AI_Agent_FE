@@ -466,9 +466,17 @@ export default function BillingPage() {
             inputProps={{ min: 0 }}
           />
           {additionalSeats > 0 && (
-            <Typography variant="body2" sx={{ mt: 2 }}>
-              Additional cost: ${(additionalSeats * (selectedPlan?.seatPrice || 0)).toFixed(2)}/month
-            </Typography>
+            <>
+              <Typography variant="body2" sx={{ mt: 2 }}>
+                Base plan includes: {selectedPlan?.seats} seats
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Additional seats requested: {additionalSeats} seats
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
+                Additional cost: ${(additionalSeats * (selectedPlan?.seatPrice || 0)).toFixed(2)}/month
+              </Typography>
+            </>
           )}
         </DialogContent>
         <DialogActions>
@@ -478,7 +486,9 @@ export default function BillingPage() {
           <Button 
             onClick={() => {
               if (selectedPlan && (selectedPlan.planType === 'individual' || selectedPlan.planType === 'standard' || selectedPlan.planType === 'smb')) {
-                handleCheckout(selectedPlan.planType, additionalSeats);
+                // Only pass the additional seats, not including base seats
+                const additionalSeatsOnly = additionalSeats;
+                handleCheckout(selectedPlan.planType, additionalSeatsOnly);
                 handleCloseSeatsDialog();
               }
             }} 
