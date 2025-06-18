@@ -36,14 +36,6 @@ export default function UserManagement() {
   const [authSettings, setAuthSettings] = useState<AuthSettings | null>(null);
   const { data: session } = useSession();
   
-  const users = [
-    { email: 'julie@xyz.com', role: 'admin', tags: ['operations'] },
-    { email: 'rachel.m@xyz.com', role: 'member', tags: ['marketing'] },
-    { email: 'john@xyz.com', role: 'member', tags: ['engineering', 'sales'] },
-    { email: 'rl.o@xyz.com', role: 'member', tags: ['HR'] },
-    { email: 'bob.smith@xyz.com', role: 'member', tags: ['IT'] },
-  ];
-
   // Fetch auth settings on component mount
   useEffect(() => {
     const fetchAuthSettings = async () => {
@@ -201,26 +193,12 @@ export default function UserManagement() {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Box>
                 <Typography variant="h6">Current users</Typography>
-                <Typography variant="h4">5</Typography>
+                <Typography variant="h4">-</Typography>
               </Box>
               <Box>
                 <Button 
-                  variant="outlined" 
-                  sx={{ 
-                    mr: 2,
-                    color: 'black',
-                    borderColor: 'black',
-                    '&:hover': {
-                      borderColor: 'black',
-                      backgroundColor: 'rgba(0, 0, 0, 0.04)'
-                    }
-                  }}
-                  startIcon={<AddIcon />}
-                >
-                  Invite users
-                </Button>
-                <Button 
                   variant="contained" 
+                  href="/dashboard/billing"
                   sx={{ 
                     bgcolor: 'black',
                     '&:hover': {
@@ -243,26 +221,7 @@ export default function UserManagement() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.email}>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.role}</TableCell>
-                      <TableCell>
-                        {user.tags.map((tag) => (
-                          <Chip
-                            key={tag}
-                            label={tag}
-                            size="small"
-                            sx={{ 
-                              mr: 0.5,
-                              color: 'primary.main',
-                              bgcolor: 'primary.50',
-                            }}
-                          />
-                        ))}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {/* User data will be populated from the backend */}
                 </TableBody>
               </Table>
             </TableContainer>

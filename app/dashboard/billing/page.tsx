@@ -262,9 +262,9 @@ export default function BillingPage() {
     setAdditionalSeats(0)
   }
 
-  const handleCheckout = async (planType: 'individual' | 'standard' | 'smb', totalSeats?: number) => {
+  const handleCheckout = async (planType: 'individual' | 'standard' | 'smb', additionalSeatsRequested?: number) => {
     setError(null);
-    const actionType = totalSeats ? 'add_seats' : 'select';
+    const actionType = additionalSeatsRequested ? 'add_seats' : 'select';
     try {
       setLoadingAction({ type: actionType, planType });
       
@@ -272,6 +272,9 @@ export default function BillingPage() {
       if (!selectedPlan) {
         throw new Error('Selected plan not found');
       }
+
+      // Calculate only the additional seats beyond what's included in the plan
+      const additionalSeats = actionType === 'add_seats' ? additionalSeatsRequested : 0;
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment/create-checkout-session`, {
         method: 'POST',
@@ -283,7 +286,8 @@ export default function BillingPage() {
         body: JSON.stringify({
           plan_type: planType,
           billing_interval: billingPeriod,
-          seats: totalSeats || selectedPlan.included_seats,
+          additional_seats: additionalSeats, // Only send additional seats
+          base_seats: selectedPlan.included_seats, // Send base seats separately
           stripe_price_id: billingPeriod === 'annual' ? selectedPlan.stripe_price_id_annual : selectedPlan.stripe_price_id_monthly,
           success_url: `${window.location.origin}/payment/success`,
           cancel_url: `${window.location.origin}/dashboard/billing`
@@ -474,7 +478,7 @@ export default function BillingPage() {
           <Button 
             onClick={() => {
               if (selectedPlan && (selectedPlan.planType === 'individual' || selectedPlan.planType === 'standard' || selectedPlan.planType === 'smb')) {
-                handleCheckout(selectedPlan.planType, (selectedPlan.seats || 1) + additionalSeats);
+                handleCheckout(selectedPlan.planType, additionalSeats);
                 handleCloseSeatsDialog();
               }
             }} 

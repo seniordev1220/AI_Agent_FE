@@ -78,7 +78,7 @@ export function DataTable() {
         acc[user.id] = user;
         return acc;
       }, {});
-      
+      console.log(usersMap)
       setUsers(usersMap);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -209,6 +209,7 @@ export function DataTable() {
 
   const getFullName = (userId: string) => {
     const user = users[userId];
+    console.log(user)
     if (!user) return "Loading...";
     return `${user.first_name} ${user.last_name}`.trim() || "Unknown";
   };
