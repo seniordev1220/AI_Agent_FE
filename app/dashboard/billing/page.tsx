@@ -262,9 +262,9 @@ export default function BillingPage() {
     setAdditionalSeats(0)
   }
 
-  const handleCheckout = async (planType: 'individual' | 'standard' | 'smb', additionalSeatsRequested?: number) => {
+  const handleCheckout = async (planType: 'individual' | 'standard' | 'smb', totalSeats?: number) => {
     setError(null);
-    const actionType = additionalSeatsRequested ? 'add_seats' : 'select';
+    const actionType = totalSeats ? 'add_seats' : 'select';
     try {
       setLoadingAction({ type: actionType, planType });
       
@@ -272,15 +272,6 @@ export default function BillingPage() {
       if (!selectedPlan) {
         throw new Error('Selected plan not found');
       }
-
-      // Calculate base price and additional seats price separately
-      const basePlanPrice = billingPeriod === 'annual' 
-        ? parseFloat(selectedPlan.annual_price)
-        : parseFloat(selectedPlan.monthly_price);
-
-      // Only calculate additional seats cost if there are additional seats
-      const additionalSeats = (actionType === 'add_seats' ? additionalSeatsRequested : 0) ?? 0;
-      const additionalSeatsCost = additionalSeats * parseFloat(selectedPlan.additional_seat_price);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment/create-checkout-session`, {
         method: 'POST',
@@ -292,10 +283,7 @@ export default function BillingPage() {
         body: JSON.stringify({
           plan_type: planType,
           billing_interval: billingPeriod,
-          base_price: basePlanPrice,
-          additional_seats: additionalSeats,
-          additional_seats_cost: additionalSeatsCost,
-          base_seats: selectedPlan.included_seats,
+          seats: totalSeats || selectedPlan.included_seats,
           stripe_price_id: billingPeriod === 'annual' ? selectedPlan.stripe_price_id_annual : selectedPlan.stripe_price_id_monthly,
           success_url: `${window.location.origin}/payment/success`,
           cancel_url: `${window.location.origin}/dashboard/billing`
@@ -474,17 +462,9 @@ export default function BillingPage() {
             inputProps={{ min: 0 }}
           />
           {additionalSeats > 0 && (
-            <>
-              <Typography variant="body2" sx={{ mt: 2 }}>
-                Base plan includes: {selectedPlan?.seats} seats
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Additional seats requested: {additionalSeats} seats
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
-                Additional cost: ${(additionalSeats * (selectedPlan?.seatPrice || 0)).toFixed(2)}/month
-              </Typography>
-            </>
+            <Typography variant="body2" sx={{ mt: 2 }}>
+              Additional cost: ${(additionalSeats * (selectedPlan?.seatPrice || 0)).toFixed(2)}/month
+            </Typography>
           )}
         </DialogContent>
         <DialogActions>
@@ -494,9 +474,7 @@ export default function BillingPage() {
           <Button 
             onClick={() => {
               if (selectedPlan && (selectedPlan.planType === 'individual' || selectedPlan.planType === 'standard' || selectedPlan.planType === 'smb')) {
-                // Only pass the additional seats, not including base seats
-                const additionalSeatsOnly = additionalSeats;
-                handleCheckout(selectedPlan.planType, additionalSeatsOnly);
+                handleCheckout(selectedPlan.planType, (selectedPlan.seats || 1) + additionalSeats);
                 handleCloseSeatsDialog();
               }
             }} 
