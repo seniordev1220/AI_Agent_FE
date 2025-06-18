@@ -178,7 +178,9 @@ export default function BillingPage() {
   const plans: Plan[] = [
     ...pricePlans.map(plan => ({
       name: plan.name,
-      price: billingPeriod === 'annual' ? parseFloat(plan.annual_price) : parseFloat(plan.monthly_price),
+      price: billingPeriod === 'annual' 
+        ? parseFloat(plan.annual_price)
+        : parseFloat(plan.monthly_price),
       seats: plan.included_seats,
       seatPrice: parseFloat(plan.additional_seat_price),
       planType: plan.name.toLowerCase() as PlanType,
@@ -273,6 +275,9 @@ export default function BillingPage() {
         throw new Error('Selected plan not found');
       }
 
+      // Calculate additional seats if any
+      const additionalSeatsCount = totalSeats ? totalSeats - selectedPlan.included_seats : 0;
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment/create-checkout-session`, {
         method: 'POST',
         headers: {
@@ -283,7 +288,8 @@ export default function BillingPage() {
         body: JSON.stringify({
           plan_type: planType,
           billing_interval: billingPeriod,
-          seats: totalSeats || selectedPlan.included_seats,
+          base_seats: selectedPlan.included_seats,
+          additional_seats: additionalSeatsCount,
           stripe_price_id: billingPeriod === 'annual' ? selectedPlan.stripe_price_id_annual : selectedPlan.stripe_price_id_monthly,
           success_url: `${window.location.origin}/payment/success`,
           cancel_url: `${window.location.origin}/dashboard/billing`
@@ -462,9 +468,20 @@ export default function BillingPage() {
             inputProps={{ min: 0 }}
           />
           {additionalSeats > 0 && (
-            <Typography variant="body2" sx={{ mt: 2 }}>
-              Additional cost: ${(additionalSeats * (selectedPlan?.seatPrice || 0)).toFixed(2)}/month
-            </Typography>
+            <>
+              <Typography variant="body2" sx={{ mt: 2 }}>
+                Base plan: ${typeof selectedPlan?.price === 'number' ? selectedPlan.price.toFixed(2) : 0}/{billingPeriod === 'annual' ? 'year' : 'month'}
+              </Typography>
+              <Typography variant="body2">
+                Additional seats cost: ${(additionalSeats * (selectedPlan?.seatPrice || 0)).toFixed(2)}/month
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
+                Total: ${billingPeriod === 'annual' 
+                  ? ((typeof selectedPlan?.price === 'number' ? selectedPlan.price : 0) + (additionalSeats * (selectedPlan?.seatPrice || 0) * 12)).toFixed(2)
+                  : ((typeof selectedPlan?.price === 'number' ? selectedPlan.price : 0) + (additionalSeats * (selectedPlan?.seatPrice || 0))).toFixed(2)
+                }/{billingPeriod === 'annual' ? 'year' : 'month'}
+              </Typography>
+            </>
           )}
         </DialogContent>
         <DialogActions>
