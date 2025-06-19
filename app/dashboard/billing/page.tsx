@@ -479,14 +479,8 @@ export default function BillingPage() {
           />
           {additionalSeats > 0 && (
             <>
-              <Typography variant="body2" sx={{ mt: 2 }}>
-                Base plan ({selectedPlan?.seats} seats): ${(selectedPlan?.price as number).toFixed(2)}/year
-              </Typography>
               <Typography variant="body2">
                 Additional seats cost: ${(additionalSeats * (selectedPlan?.seatPrice || 0) * 12).toFixed(2)}/year
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                Total: ${((selectedPlan?.price as number) + (additionalSeats * (selectedPlan?.seatPrice || 0) * 12)).toFixed(2)}/year
               </Typography>
             </>
           )}
