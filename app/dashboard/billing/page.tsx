@@ -178,9 +178,7 @@ export default function BillingPage() {
   const plans: Plan[] = [
     ...pricePlans.map(plan => ({
       name: plan.name,
-      price: billingPeriod === 'annual' 
-        ? parseFloat(plan.annual_price)
-        : parseFloat(plan.monthly_price),
+      price: billingPeriod === 'annual' ? parseFloat(plan.annual_price) : parseFloat(plan.monthly_price),
       seats: plan.included_seats,
       seatPrice: parseFloat(plan.additional_seat_price),
       planType: plan.name.toLowerCase() as PlanType,
@@ -275,9 +273,18 @@ export default function BillingPage() {
         throw new Error('Selected plan not found');
       }
 
-      // Calculate additional seats if any
-      const additionalSeatsCount = totalSeats ? totalSeats - selectedPlan.included_seats : 0;
+      // Calculate additional seats (only the extra seats beyond included)
+      const basePlanSeats = selectedPlan.included_seats;
+      const additionalSeatsCount = totalSeats ? Math.max(0, totalSeats - basePlanSeats) : 0;
       
+      // Calculate base plan price
+      const basePlanPrice = billingPeriod === 'annual' ? 
+        parseFloat(selectedPlan.annual_price) : 
+        parseFloat(selectedPlan.monthly_price);
+
+      // Calculate additional seats cost (per year)
+      const additionalSeatsCost = additionalSeatsCount * parseFloat(selectedPlan.additional_seat_price) * 12;
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment/create-checkout-session`, {
         method: 'POST',
         headers: {
@@ -288,8 +295,11 @@ export default function BillingPage() {
         body: JSON.stringify({
           plan_type: planType,
           billing_interval: billingPeriod,
-          base_seats: selectedPlan.included_seats,
+          base_seats: basePlanSeats,
           additional_seats: additionalSeatsCount,
+          additional_seats_price: parseFloat(selectedPlan.additional_seat_price),
+          base_price: basePlanPrice,
+          total_price: basePlanPrice + additionalSeatsCost,
           stripe_price_id: billingPeriod === 'annual' ? selectedPlan.stripe_price_id_annual : selectedPlan.stripe_price_id_monthly,
           success_url: `${window.location.origin}/payment/success`,
           cancel_url: `${window.location.origin}/dashboard/billing`
@@ -470,16 +480,13 @@ export default function BillingPage() {
           {additionalSeats > 0 && (
             <>
               <Typography variant="body2" sx={{ mt: 2 }}>
-                Base plan: ${typeof selectedPlan?.price === 'number' ? selectedPlan.price.toFixed(2) : 0}/{billingPeriod === 'annual' ? 'year' : 'month'}
+                Base plan ({selectedPlan?.seats} seats): ${(selectedPlan?.price as number).toFixed(2)}/year
               </Typography>
               <Typography variant="body2">
-                Additional seats cost: ${(additionalSeats * (selectedPlan?.seatPrice || 0)).toFixed(2)}/month
+                Additional seats cost: ${(additionalSeats * (selectedPlan?.seatPrice || 0) * 12).toFixed(2)}/year
               </Typography>
-              <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
-                Total: ${billingPeriod === 'annual' 
-                  ? ((typeof selectedPlan?.price === 'number' ? selectedPlan.price : 0) + (additionalSeats * (selectedPlan?.seatPrice || 0) * 12)).toFixed(2)
-                  : ((typeof selectedPlan?.price === 'number' ? selectedPlan.price : 0) + (additionalSeats * (selectedPlan?.seatPrice || 0))).toFixed(2)
-                }/{billingPeriod === 'annual' ? 'year' : 'month'}
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                Total: ${((selectedPlan?.price as number) + (additionalSeats * (selectedPlan?.seatPrice || 0) * 12)).toFixed(2)}/year
               </Typography>
             </>
           )}
