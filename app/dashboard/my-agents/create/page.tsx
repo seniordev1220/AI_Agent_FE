@@ -57,6 +57,9 @@ interface DataSource {
   document_count: number;
   selected?: boolean;
   is_converted: boolean;
+  connection_settings: {
+    file_path?: string;
+  };
 }
 
 // Add these interfaces at the top with other interfaces
@@ -299,10 +302,15 @@ export default function CreateAgentPage() {
         throw new Error(errorData.detail || 'Failed to save agent')
       }
 
+      setToastMessage('Agent saved successfully')
+      setToastSeverity('success')
+      setOpenToast(true)
       router.push('/dashboard/my-agents')
     } catch (error) {
       console.error('Error:', error)
-      alert('Failed to save agent. Check console for details.')
+      setToastMessage(error instanceof Error ? error.message : 'Failed to save agent')
+      setToastSeverity('error')
+      setOpenToast(true)
     }
   }
 
@@ -659,7 +667,7 @@ You will help analyze information, and provide advice to boost company revenue."
                         <Box>
                           <Typography>{source.name}</Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {formatBytes(source.connection_settings.file_size)}
+                            {source.raw_size_bytes ? formatBytes(source.raw_size_bytes) : 'Size not available'}
                           </Typography>
                         </Box>
                       </Box>
