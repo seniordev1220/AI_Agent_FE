@@ -23,7 +23,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { ChatInterface } from '@/components/ai-agents/chat-interface'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 
 const StyledTab = styled(Tab)({
   textTransform: 'none',
@@ -72,6 +72,7 @@ export default function IntegrationPage() {
   const [showCode, setShowCode] = useState(true)
   const [myAgents, setMyAgents] = useState<Agent[]>([])
   const { data: session } = useSession()
+  const [finiiteApiKey, setFiniiteApiKey] = useState<string>('')
 
   useEffect(() => {
     const fetchAgents = async () => {
@@ -105,8 +106,29 @@ export default function IntegrationPage() {
       }
     };
 
+    const fetchUserProfile = async () => {
+      if (!session?.user?.accessToken) return;
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+          headers: {
+            'Authorization': `Bearer ${session.user.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch user profile');
+        const userData = await response.json();
+        setFiniiteApiKey(userData.finiite_api_key || '');
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        toast.error('Failed to fetch API key');
+      }
+    };
+
     if (session) {
       fetchAgents();
+      fetchUserProfile();
     }
   }, [agentId, session]);
 
@@ -114,21 +136,10 @@ export default function IntegrationPage() {
     setSelectedTab(newValue)
   }
 
-  const embedCode = `<div id="finiite-chat-widget"></div>
-<script>
-    (function() {
-        var script = document.createElement('script');
-        script.src = '${process.env.NEXT_PUBLIC_API_URL}/static/widget.js';
-        script.async = true;
-        script.onload = function() {
-            initFiniiteWidget({
-                agentId: '${agentId || 'jogpwrjgw'}',
-                baseUrl: '${process.env.NEXT_PUBLIC_API_URL}'
-            });
-        };
-        document.head.appendChild(script);
-    })();
-</script>`
+  const embedCode = `<iframe
+    src="https://app.finiite.com/embed/${selectedAgent}/${finiiteApiKey}"
+    style="border: none; height: 500px; width: 600px;"
+></iframe>`
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(embedCode)
@@ -248,28 +259,80 @@ export default function IntegrationPage() {
           </div>
         </Box>
 
-        {/* Agent Selection */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Select the agent you want to deploy
+        {/* Finiite API Key Section - Always visible */}
+        <Box sx={{ maxWidth: 800, mb: 4 }}>
+          <Typography variant="h6" sx={{ mb: 3 }}>
+            Finiite API Key
           </Typography>
-          <FormControl fullWidth sx={{ maxWidth: 800 }}>
-            <Select
-              value={selectedAgent}
-              onChange={(e) => setSelectedAgent(e.target.value)}
-            >
-              {myAgents.map((agent) => (
-                <MenuItem key={agent.id} value={agent.id}>
-                  {agent.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Box sx={{ mb: 4 }}>
+            <TextField
+              fullWidth
+              value={finiiteApiKey}
+              InputProps={{
+                readOnly: true,
+                endAdornment: (
+                  <Button
+                    onClick={() => {
+                      navigator.clipboard.writeText(finiiteApiKey);
+                      toast.success('API key copied to clipboard');
+                    }}
+                    startIcon={<ContentCopyIcon />}
+                    sx={{
+                      color: 'text.secondary',
+                      '&:hover': {
+                        bgcolor: 'transparent',
+                        color: 'text.primary',
+                      },
+                    }}
+                  >
+                    copy
+                  </Button>
+                ),
+                sx: {
+                  bgcolor: 'white',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#E5E7EB',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#E5E7EB',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#E5E7EB',
+                  },
+                  borderRadius: '8px',
+                  fontSize: { xs: '0.875rem', md: '1rem' },
+                  fontFamily: 'monospace'
+                }
+              }}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              Use this API key to authenticate your requests to the Finiite API
+            </Typography>
+          </Box>
         </Box>
 
         {/* Content based on selected tab */}
         {selectedTab === 'embed' ? (
           <Box>
+            {/* Agent Selection */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Select the agent you want to deploy
+              </Typography>
+              <FormControl fullWidth sx={{ maxWidth: 800 }}>
+                <Select
+                  value={selectedAgent}
+                  onChange={(e) => setSelectedAgent(e.target.value)}
+                >
+                  {myAgents.map((agent) => (
+                    <MenuItem key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+
             {/* Configuration Section */}
             <Box sx={{ maxWidth: 800 }}>
               {/* Deployment Toggle */}

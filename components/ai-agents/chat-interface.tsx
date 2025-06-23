@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
-import { Send, Upload } from 'lucide-react'
+import { Send } from 'lucide-react'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { ModelSelector } from '@/components/ai-agents/model-selector'
+import { EmbedModelSelector } from '@/components/ai-agents/embed-model-selector'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -27,22 +27,18 @@ interface Agent {
 interface ChatInterfaceProps {
   agent: Agent | null
   isEmbedded?: boolean
+  apiKey?: string
 }
 
-export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps) {
-  const { data: session } = useSession()
+export function ChatInterface({ agent, isEmbedded = false, apiKey }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [selectedModel, setSelectedModel] = useState<string>("gpt-3.5-turbo")
-  const [showUpload, setShowUpload] = useState(false)
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     // Add welcome message if provided
-    console.log(agent, isEmbedded)
     if (agent?.welcome_message) {
       setMessages([{ role: 'assistant', content: agent.welcome_message }])
     }
@@ -58,7 +54,7 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim() || !agent || !session) return
+    if (!input.trim() || !agent || !apiKey) return
 
     const userMessage: ChatMessage = {
       role: 'user',
@@ -71,16 +67,16 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/${agent.id}/messages`, {
+      // Create FormData object
+      const formData = new FormData()
+      formData.append('content', input)
+      formData.append('model', selectedModel)
+      formData.append('api_key', apiKey)
+      formData.append('source_ids', '[]')
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/embed/${agent.id}/messages`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.user.accessToken}`,
-        },
-        body: JSON.stringify({
-          content: input,
-          model: selectedModel
-        }),
+        body: formData,
       })
 
       if (!response.ok) {
@@ -112,43 +108,6 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
     setSelectedModel(model)
   }
 
-  const handleFileUpload = async (file: File) => {
-    if (!agent || !session) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/agents/${agent.id}/knowledge-bases/upload`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.user.accessToken}`,
-          },
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Error response:', errorData);
-        throw new Error(errorData.detail || 'Failed to upload file');
-      }
-
-      const data = await response.json();
-      toast.success('File uploaded successfully');
-      setUploadedFile(file);
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to upload file');
-    }
-  };
-
-  const handleUpdateKnowledge = () => {
-    fileInputRef.current?.click();
-  };
-
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
@@ -164,11 +123,13 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
           </div>
           <h2 className="font-medium">{agent?.name || "AI Agent"}</h2>
         </div>
-        {isEmbedded && (
-          <div className="flex items-center">
-            <ModelSelector
+        {/* Always show model selector in embedded mode */}
+        {isEmbedded && apiKey && (
+          <div className="flex items-center z-50">
+            <EmbedModelSelector
               value={selectedModel}
               onChange={handleModelChange}
+              apiKey={apiKey}
             />
           </div>
         )}
@@ -231,14 +192,6 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
                       Model: {message.model}
                     </div>
                   </div>
-                  <div className="flex justify-end mt-2">
-                    {uploadedFile && (
-                      <div className="flex items-center gap-2 mr-2 text-sm text-gray-600">
-                        <Upload className="w-4 h-4" />
-                        {uploadedFile.name}
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             )}
@@ -267,20 +220,6 @@ export function ChatInterface({ agent, isEmbedded = false }: ChatInterfaceProps)
           </button>
         </div>
       </form>
-
-      {/* Add hidden file input */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            handleFileUpload(file);
-          }
-        }}
-        accept=".txt,.pdf,.doc,.docx"  // Add more file types as needed
-      />
     </div>
   )
 } 

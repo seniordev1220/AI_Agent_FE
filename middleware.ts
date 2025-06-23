@@ -6,7 +6,10 @@ export async function middleware(req: NextRequest) {
 
   // Define paths that are considered public (no auth required)
   const publicPaths = ["/", "/sign-in", "/terms", "/privacy", "public"]
-  const isPublicPath = publicPaths.includes(path) || path.startsWith("/api/auth") || path.includes(".")
+  const isPublicPath = publicPaths.includes(path) || 
+    path.startsWith("/api/auth") || 
+    path.startsWith("/embed") ||  // Allow embed routes without auth
+    path.includes(".")
 
   // Get the session token
   const token = await getToken({
