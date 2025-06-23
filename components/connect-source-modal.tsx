@@ -21,6 +21,7 @@ interface SourceField {
   multiple?: boolean
   accept?: string
   placeholder?: string
+  disabled?: boolean
 }
 
 interface ValidationError {
@@ -66,16 +67,19 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
       case 'Google Drive':
         return [
           ...commonFields,
-          { key: 'folder_id', label: 'Folder ID', type: 'text', 
-            placeholder: 'Google Drive Folder ID (optional)' },
-          { key: 'file_ids', label: 'File IDs (one per line)', type: 'textarea',
-            placeholder: 'Specific file IDs to load (optional)' },
           { 
-            key: 'token_file', 
-            label: 'Token File', 
-            type: 'file',
-            accept: '.json',
-            placeholder: 'Upload your token file' 
+            key: 'file_ids', 
+            label: 'File IDs', 
+            type: 'textarea',
+            required: true,
+            placeholder: 'Enter Google Drive file IDs (one per line)\nExample: 1a2b3c4d5e...'
+          },
+          {
+            key: 'info_text',
+            label: 'Note',
+            type: 'text',
+            placeholder: 'Files must be accessible via the service account configured on the server.',
+            disabled: true
           }
         ];
       case 'Slack':
@@ -230,38 +234,19 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
         break;
 
       case 'Google Drive':
-        // Check that only one of folder_id or file_ids is provided
-        if (formData.folder_id && formData.file_ids) {
-          newErrors.push({ 
-            field: 'folder_id', 
-            message: 'Cannot specify both Folder ID and File IDs. Please provide only one.' 
-          });
-          newErrors.push({ 
-            field: 'file_ids', 
-            message: 'Cannot specify both Folder ID and File IDs. Please provide only one.' 
-          });
-        }
-
-        // Validate folder_id format if provided
-        if (formData.folder_id && !formData.folder_id.match(/^[a-zA-Z0-9_-]+$/)) {
-          newErrors.push({ field: 'folder_id', message: 'Invalid folder ID format' });
-        }
-        
-        // Validate file_ids format if provided
-        if (formData.file_ids) {
-          const fileIds = formData.file_ids.split('\n').map((id: string) => id.trim()).filter((id: string) => id);
+        if (!formData.file_ids?.trim()) {
+          newErrors.push({ field: 'file_ids', message: 'At least one file ID is required' });
+        } else {
+          const fileIds = formData.file_ids.split('\n').map((id: string) => id.trim());
+          
+          // More strict validation for Google Drive file IDs
           fileIds.forEach((id: string, index: number) => {
-            if (!id.match(/^[a-zA-Z0-9_-]+$/)) {
-              newErrors.push({ field: 'file_ids', message: `Invalid file ID format on line ${index + 1}` });
+            if (!id.match(/^[a-zA-Z0-9_-]{20,}$/)) {
+              newErrors.push({ 
+                field: 'file_ids', 
+                message: `Invalid Google Drive file ID format on line ${index + 1}. File IDs should be at least 20 characters long and contain only letters, numbers, underscores, and hyphens.` 
+              });
             }
-          });
-        }
-
-        // Check that at least one of folder_id or file_ids is provided
-        if (!formData.folder_id && !formData.file_ids) {
-          newErrors.push({ 
-            field: 'folder_id', 
-            message: 'Please provide either a Folder ID or File IDs' 
           });
         }
         break;
@@ -412,12 +397,28 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
         if (selectedSource === 'Google Drive') {
           const fileFormData = new FormData();
           fileFormData.append('data_source_name', formData.source_name);
-          fileFormData.append('folder_id', formData.folder_id || '');
-          fileFormData.append('file_ids', formData.file_ids || '');
           
-          if (formData.token_file?.[0]) {
-            fileFormData.append('token_file', formData.token_file[0]);
+          // Convert file_ids from textarea to array and validate format
+          const fileIds = formData.file_ids
+            .split('\n')
+            .map((id: string) => id.trim())
+            .filter((id: string) => id);
+
+          // Basic validation before sending to server
+          if (fileIds.length === 0) {
+            throw new Error('At least one file ID is required');
           }
+
+          // Check for valid Google Drive file ID format
+          const invalidIds = fileIds.filter((id: string) => !id.match(/^[a-zA-Z0-9_-]{20,}$/));
+          if (invalidIds.length > 0) {
+            throw new Error(`Invalid file ID format: ${invalidIds.join(', ')}`);
+          }
+
+          // Send each file ID as a separate form field
+          fileIds.forEach((id, index) => {
+            fileFormData.append(`file_ids`, id);
+          });
 
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/data-sources/google-drive`, {
             method: 'POST',
@@ -433,6 +434,15 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
           }
 
           const result = await response.json();
+          
+          // Display success with file info if available
+          if (result.connection_settings?.file_metadata) {
+            const fileCount = result.connection_settings.file_metadata.length;
+            const totalSize = result.connection_settings.file_size;
+            const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
+            console.log(`Successfully connected ${fileCount} files (${sizeInMB} MB)`);
+          }
+
           setUploadStatus('success');
           window.dispatchEvent(new Event('sourceAdded'));
           setTimeout(() => onClose(), 1000);

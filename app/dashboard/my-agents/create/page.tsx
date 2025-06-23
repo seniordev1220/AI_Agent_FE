@@ -168,6 +168,7 @@ export default function CreateAgentPage() {
             ...source,
             selected: selectedKnowledgeBases.includes(source.id)
           }));
+        console.log(sourcesWithSelection)
         setDataSources(sourcesWithSelection);
       } catch (error) {
         console.error('Error fetching data sources:', error);
