@@ -4,12 +4,11 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     
-    // Add trial start date to the sign-up request
+    // Add trial start date and trial status to the sign-up request
     const signupData = {
       ...body,
       trial_start_date: new Date().toISOString(),
-      is_trial_expired: false,
-      has_active_subscription: false
+      trial_status: 'active'
     }
     
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {

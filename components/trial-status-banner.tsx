@@ -10,6 +10,7 @@ export function TrialStatusBanner() {
   const [daysLeft, setDaysLeft] = useState<number | null>(null)
 
   useEffect(() => {
+    console.log(session)
     if (session?.user?.trialStartDate) {
       const trialStart = new Date(session.user.trialStartDate)
       const trialEnd = new Date(trialStart.getTime() + 14 * 24 * 60 * 60 * 1000) // 14 days in milliseconds
@@ -19,11 +20,13 @@ export function TrialStatusBanner() {
     }
   }, [session])
 
-  if (!session?.user?.trialStartDate || session.user.hasActiveSubscription) {
+  // Don't show banner if no trial start date or if trial status is not 'active' or 'expired'
+  if (!session?.user?.trialStartDate || session?.user?.trial_status == 'active') {
     return null
   }
 
-  if (session.user.isTrialExpired) {
+  // Show expired banner if trial status is 'expired'
+  if (session.user.trial_status === 'expired') {
     return (
       <div className="bg-red-500 text-white px-4 py-2">
         <div className="container mx-auto flex items-center justify-between">

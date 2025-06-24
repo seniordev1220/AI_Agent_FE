@@ -9,7 +9,7 @@ declare module "next-auth" {
     lastName?: string
     trialStartDate?: string
     isTrialExpired?: boolean
-    hasActiveSubscription?: boolean
+    trial_status?: string
   }
 
   interface Session {
@@ -22,7 +22,7 @@ declare module "next-auth" {
       lastName?: string
       trialStartDate?: string
       isTrialExpired?: boolean
-      hasActiveSubscription?: boolean
+      trial_status?: string
     }
   }
 }

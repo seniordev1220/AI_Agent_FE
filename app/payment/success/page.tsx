@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Box, Typography, Button, CircularProgress } from '@mui/material'
 import { useSearchParams, useRouter } from 'next/navigation'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import { useSession } from 'next-auth/react'
 
 interface SessionDetails {
   id: string;
@@ -24,6 +25,7 @@ export default function SuccessPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const sessionId = searchParams.get('session_id')
+  const { data: session, update: updateSession } = useSession()
 
   useEffect(() => {
     const verifySession = async () => {
@@ -37,6 +39,7 @@ export default function SuccessPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.user?.accessToken}`,
           },
           body: JSON.stringify({
             session_id: sessionId
@@ -53,6 +56,15 @@ export default function SuccessPage() {
         if (data.session?.payment_status === 'paid') {
           setSessionDetails(data.session)
           setStatus('success')
+          
+          // Update the session to reflect the active subscription
+          await updateSession({
+            ...session,
+            user: {
+              ...session?.user,
+              trial_status: 'active',
+            }
+          })
         } else {
           setStatus('error')
         }
@@ -63,7 +75,7 @@ export default function SuccessPage() {
     }
 
     verifySession()
-  }, [sessionId])
+  }, [sessionId, session, updateSession])
 
   const handleGoToDashboard = () => {
     router.push('/dashboard')

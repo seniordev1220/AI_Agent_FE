@@ -14,7 +14,7 @@ export async function GET() {
     }
 
     const trialStartDate = session.user.trialStartDate
-    const hasActiveSubscription = session.user.hasActiveSubscription
+    const trialStatus = session.user.trial_status
 
     if (!trialStartDate) {
       return NextResponse.json(
@@ -28,12 +28,12 @@ export async function GET() {
     const today = new Date()
     const isTrialExpired = today > trialEnd
 
-    // If user has an active subscription, they're not limited
-    if (hasActiveSubscription) {
+    // If user's trial status is not 'active' or 'expired', they're not limited
+    if (trialStatus && !['active', 'expired'].includes(trialStatus)) {
       return NextResponse.json({
         trial_active: false,
         trial_expired: false,
-        has_active_subscription: true,
+        trial_status: trialStatus,
         days_left: 0,
         limits: null
       })
@@ -51,7 +51,7 @@ export async function GET() {
     return NextResponse.json({
       trial_active: !isTrialExpired,
       trial_expired: isTrialExpired,
-      has_active_subscription: false,
+      trial_status: trialStatus,
       days_left: Math.max(0, Math.ceil((trialEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))),
       limits: trialLimits
     })
