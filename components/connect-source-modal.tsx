@@ -73,13 +73,6 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
             type: 'textarea',
             required: true,
             placeholder: 'Enter Google Drive file IDs (one per line)\nExample: 1a2b3c4d5e...'
-          },
-          {
-            key: 'info_text',
-            label: 'Note',
-            type: 'text',
-            placeholder: 'Files must be accessible via the service account configured on the server.',
-            disabled: true
           }
         ];
       case 'Slack':
@@ -416,7 +409,7 @@ export function ConnectSourceModal({ isOpen, onClose, selectedSource }: ConnectS
           }
 
           // Send each file ID as a separate form field
-          fileIds.forEach((id, index) => {
+          fileIds.forEach((id: string, index: number) => {
             fileFormData.append(`file_ids`, id);
           });
 
