@@ -59,7 +59,7 @@ export const authOptions = {
               lastName: userData.last_name,
               trialStartDate: userData.trial_start_date || new Date().toISOString(),
               isTrialExpired: userData.is_trial_expired || false,
-              trial_status: userData.trial_status || 'active',
+              trial_status: userData.trial_status || 'free_trial',
             }
           }
 
@@ -106,7 +106,7 @@ export const authOptions = {
             user.accessToken = data.access_token;
             user.trialStartDate = data.trial_start_date || new Date().toISOString();
             user.isTrialExpired = data.is_trial_expired || false;
-            user.trial_status = data.trial_status || 'active';
+            user.trial_status = data.trial_status || 'free_trial';
           }
         } catch (error) {
           console.error('Error storing Google user:', error);

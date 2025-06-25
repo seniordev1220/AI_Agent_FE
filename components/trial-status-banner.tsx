@@ -1,16 +1,51 @@
 "use client"
 
-import { useSession } from "next-auth/react"
+import { useSession, signIn } from "next-auth/react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
 export function TrialStatusBanner() {
-  const { data: session } = useSession()
+  const { data: session, update: updateSession } = useSession()
   const router = useRouter()
   const [daysLeft, setDaysLeft] = useState<number | null>(null)
 
   useEffect(() => {
-    console.log(session)
+    // Function to fetch latest trial status
+    const updateTrialStatus = async () => {
+      if (session?.user?.accessToken) {
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+            headers: {
+              'Authorization': `Bearer ${session.user.accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            console.log(session.user.trial_status, userData.trial_status)
+            if (userData.trial_status !== session.user.trial_status) {
+              // Update the session with new trial status
+              await updateSession({
+                ...session,
+                user: {
+                  ...session.user,
+                  trial_status: userData.trial_status,
+                  trialStartDate: userData.trial_start,
+                }
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error updating trial status:', error);
+        }
+      }
+    };
+
+    updateTrialStatus();
+  }, [session, updateSession]);
+
+  useEffect(() => {
     if (session?.user?.trialStartDate) {
       const trialStart = new Date(session.user.trialStartDate)
       const trialEnd = new Date(trialStart.getTime() + 14 * 24 * 60 * 60 * 1000) // 14 days in milliseconds
@@ -20,8 +55,8 @@ export function TrialStatusBanner() {
     }
   }, [session])
 
-  // Don't show banner if no trial start date or if trial status is not 'active' or 'expired'
-  if (!session?.user?.trialStartDate || session?.user?.trial_status == 'active') {
+  // Don't show banner if no trial start date or if trial status is not 'active', 'free_trial' or 'expired'
+  if (!session?.user?.trialStartDate || session.user.trial_status === 'active') {
     return null
   }
 

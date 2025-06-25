@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const signupData = {
       ...body,
       trial_start_date: new Date().toISOString(),
-      trial_status: 'active'
+      trial_status: 'free_trial'
     }
     
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
