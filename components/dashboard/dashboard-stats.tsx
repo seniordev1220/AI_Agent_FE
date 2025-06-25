@@ -171,7 +171,7 @@ export function DashboardStats() {
                 </div>
               ))
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="flex items-center justify-center h-full text-gray-500 text-xl font-bold">
                 No agents data available
               </div>
             )}
