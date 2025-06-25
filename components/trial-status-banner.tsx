@@ -8,6 +8,7 @@ export function TrialStatusBanner() {
   const { data: session, update: updateSession } = useSession()
   const router = useRouter()
   const [daysLeft, setDaysLeft] = useState<number | null>(null)
+  const [trialStatus, setTrialStatus] = useState<string | undefined>(session?.user?.trial_status)
 
   useEffect(() => {
     // Function to fetch latest trial status
@@ -23,8 +24,8 @@ export function TrialStatusBanner() {
           
           if (response.ok) {
             const userData = await response.json();
-            console.log(session.user.trial_status, userData.trial_status)
-            if (userData.trial_status !== session.user.trial_status) {
+            if (userData.trial_status !== trialStatus) {
+              setTrialStatus(userData.trial_status)
               // Update the session with new trial status
               await updateSession({
                 ...session,
@@ -56,7 +57,7 @@ export function TrialStatusBanner() {
   }, [session])
 
   // Don't show banner if no trial start date or if trial status is not 'active', 'free_trial' or 'expired'
-  if (!session?.user?.trialStartDate || session.user.trial_status === 'active') {
+  if (!session?.user?.trialStartDate || trialStatus === 'active') {
     return null
   }
 
