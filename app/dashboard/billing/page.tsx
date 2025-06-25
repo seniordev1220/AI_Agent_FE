@@ -140,11 +140,14 @@ export default function BillingPage() {
   }, [])
 
   // Convert API price plans to UI format
-  const convertFeatures = (features: PricePlanFeature[]) => {
+  const convertFeatures = (features: PricePlanFeature[]): { text: string; bold: string[] }[] => {
+    if (!Array.isArray(features)) {
+      return [];
+    }
     return features.map(feature => ({
       text: feature.description,
       bold: [] // Since we don't have bold parts in the API response
-    }))
+    }));
   }
 
   const enterprisePlan: Plan = {
@@ -176,14 +179,14 @@ export default function BillingPage() {
   }
 
   const plans: Plan[] = [
-    ...pricePlans.map(plan => ({
+    ...(Array.isArray(pricePlans) ? pricePlans.map(plan => ({
       name: plan.name,
       price: billingPeriod === 'annual' ? parseFloat(plan.annual_price) : parseFloat(plan.monthly_price),
       seats: plan.included_seats,
       seatPrice: parseFloat(plan.additional_seat_price),
       planType: plan.name.toLowerCase() as PlanType,
       features: convertFeatures(plan.features)
-    })),
+    })) : []),
     enterprisePlan
   ]
 
