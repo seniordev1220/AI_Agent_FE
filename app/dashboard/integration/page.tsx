@@ -137,7 +137,7 @@ export default function IntegrationPage() {
   }
 
   const embedCode = `<iframe
-    src="https://app.finiite.com/embed/${selectedAgent}/${finiiteApiKey}"
+    src="https://app.finiite.com/embed/${selectedAgent}/${finiiteApiKey}?references=${referenceType}"
     style="border: none; height: 500px; width: 600px;"
 ></iframe>`
 
