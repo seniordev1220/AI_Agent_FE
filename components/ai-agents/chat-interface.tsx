@@ -167,19 +167,26 @@ export function ChatInterface({ agent, isEmbedded = false, apiKey }: ChatInterfa
       if (source.source_type === 'web_scraper' && source.connection_settings?.url) {
         window.open(source.connection_settings.url, '_blank');
       } else if (source.connection_settings?.file_path) {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/data-sources/${source.id}/content`,
-          {
-            headers: {
-              'X-API-Key': apiKey || '',
-            },
-          }
-        );
+        const endpoint = isEmbedded 
+          ? `${process.env.NEXT_PUBLIC_API_URL}/data-sources/embed/${source.id}/content?api_key=${apiKey}`
+          : `${process.env.NEXT_PUBLIC_API_URL}/data-sources/${source.id}/content`;
+
+        const response = await fetch(endpoint);
 
         if (!response.ok) {
           throw new Error('Failed to fetch file');
         }
 
+        // Handle web scraper URLs
+        if (source.source_type === 'web_scraper') {
+          const data = await response.json();
+          if (data.url) {
+            window.open(data.url, '_blank');
+            return;
+          }
+        }
+
+        // Handle file downloads
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         window.open(url, '_blank');
