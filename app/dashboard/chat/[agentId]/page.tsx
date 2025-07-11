@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ModelSelector } from "@/components/ai-agents/model-selector";
 import { MessageInput } from "@/components/ai-agents/message-input";
+import { LoadingDots } from "@/components/ui/loading-dots";
 import React from "react";
 import { useSession } from "next-auth/react";
 import { toast } from 'sonner';
@@ -19,6 +20,8 @@ interface ConnectedSource {
   id: number;
   name: string;
   source_type: string;
+  type?: string;  // Make type optional since it's not always present
+  icon?: string;
   connection_settings?: {
     file_path?: string;
     url?: string;
@@ -83,6 +86,7 @@ export default function ChatPage({
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isAiResponding, setIsAiResponding] = useState(false);
 
   // Add this ref to store the current chat history
   const chatHistoryRef = useRef<ChatMessage[]>([]);
@@ -189,13 +193,7 @@ export default function ChatPage({
           .find((message: ChatMessage) => message.connected_sources && message.connected_sources.length > 0);
 
         if (lastMessageWithSources?.connected_sources) {
-          const sources = lastMessageWithSources.connected_sources.map((source) => ({
-            id: source.id,
-            name: source.name,
-            source_type: source.source_type,
-            icon: getSourceIcon(source.source_type)
-          }));
-          console.log("sources", lastMessageWithSources.connected_sources);
+          const sources = lastMessageWithSources.connected_sources.map(mapSourceToConnectedSource);
           setConnectedSources(sources);
         }
 
@@ -269,18 +267,8 @@ export default function ChatPage({
               line = line.replace(/\[([^\]]+)\]/g, (match, sourceName) => {
                 const source = connectedSources.find(s => s.name === sourceName);
                 if (!source) return match;
-
-                // Determine icon based on source type
-                let icon;
-                if (source.connection_settings?.file_path?.toLowerCase().endsWith('.pdf')) {
-                  icon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>`;
-                } else if (source.source_type === 'web_scraper') {
-                  icon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
-                } else {
-                  icon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
-                }
-
-                return `<a href="javascript:void(0)" class="text-blue-600 hover:underline flex items-center gap-1" onclick="window.handleSourceClick(${JSON.stringify(source)})">${icon}[${sourceName}]</a>`;
+                
+                return `<a href="javascript:void(0)" class="text-blue-600 hover:underline flex items-center gap-1" onclick="window.handleSourceClick(${JSON.stringify(source)})">[${sourceName}]</a>`;
               });
             }
 
@@ -289,14 +277,7 @@ export default function ChatPage({
               line = line.replace(/\[(\d+)\]/g, (match, num) => {
                 const index = parseInt(num) - 1;
                 if (citations[index]) {
-                  return `<a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                      <polyline points="15 3 21 3 21 9"></polyline>
-                      <line x1="10" y1="14" x2="21" y2="3"></line>
-                    </svg>
-                    [${num}]
-                  </a>`;
+                  return `<a href="${citations[index]}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">[${num}]</a>`;
                 }
                 return match;
               });
@@ -363,7 +344,7 @@ export default function ChatPage({
     };
   }, []);
 
-  // Update the handleSendMessage function
+  // Update the handleSendMessage function to properly handle loading state
   const handleSendMessage = async (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string, selectedSourceIds?: string[]) => {
     if (!agent || !session) return;
 
@@ -400,8 +381,11 @@ export default function ChatPage({
       showDataSources: isDataSourceQuery
     };
 
-    const updatedHistory = [...chatHistory, newMessage];
-    setChatHistory(updatedHistory);
+    // Update chat history with user message
+    setChatHistory(prev => [...prev, newMessage]);
+    
+    // Set loading state to true before making the request
+    setIsAiResponding(true);
 
     try {
       const response = await fetch(
@@ -439,16 +423,12 @@ export default function ChatPage({
 
       // Update connected sources if they exist in the response
       if (assistantMessage.connected_sources && assistantMessage.connected_sources.length > 0) {
-        const sources = assistantMessage.connected_sources.map((source) => ({
-          id: source.id,
-          name: source.name,
-          source_type: source.source_type,
-          icon: getSourceIcon(source.source_type)
-        }));
+        const sources = assistantMessage.connected_sources.map(mapSourceToConnectedSource);
         setConnectedSources(sources);
       }
 
-      setChatHistory([...updatedHistory, assistantMessage]);
+      // Update chat history with AI response
+      setChatHistory(prev => [...prev, assistantMessage]);
       toast.success('Message sent successfully');
 
     } catch (error) {
@@ -459,9 +439,11 @@ export default function ChatPage({
         model: selectedModel,
         showDataSources: false
       };
-      setChatHistory([...updatedHistory, errorMessage]);
-
+      setChatHistory(prev => [...prev, errorMessage]);
       toast.error(error instanceof Error ? error.message : 'Failed to send message');
+    } finally {
+      // Always set loading state to false when done
+      setIsAiResponding(false);
     }
   };
 
@@ -501,20 +483,6 @@ export default function ChatPage({
       console.error('Error uploading file:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to upload file');
     }
-  };
-
-  const handleUpdateKnowledge = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleImageDownload = (imageUrl: string) => {
-    // Create a temporary anchor element
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = `generated-image-${Date.now()}.png`; // Give a unique name
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   // Add web search handler
@@ -596,6 +564,64 @@ export default function ChatPage({
       const timestamp = msg.created_at ? new Date(msg.created_at).getTime() : Date.now();
       return `${prefix}-${msg.id || ''}-${timestamp}-${index}`;
     };
+
+    // Add loading indicator after the last message if AI is responding
+    if (index === chatHistory.length - 1 && isAiResponding) {
+      return (
+        <React.Fragment key={getUniqueKey('message-group')}>
+          {/* Render the actual message */}
+          {msg.role === "user" ? (
+            <div
+              key={getUniqueKey('user-message')}
+              className="self-end bg-gray-100 p-4 rounded-2xl max-w-[60%]"
+            >
+              <div
+                className="text-gray-800"
+                dangerouslySetInnerHTML={{
+                  __html: msg.content
+                }}
+              />
+              {((msg.files?.length ?? 0) > 0 || (msg.attachments?.length ?? 0) > 0) && (
+                <div className="mt-2 space-y-1">
+                  {msg.files?.map((file, i) => (
+                    <div key={getUniqueKey(`file-${i}`)} className="flex items-center text-sm text-gray-500">
+                      <Paperclip className="h-3 w-3 mr-1" />
+                      {file.name}
+                    </div>
+                  ))}
+                  {msg.attachments?.map((attachment) => (
+                    <div key={getUniqueKey(`attachment-${attachment.id}`)} className="flex items-center text-sm text-gray-500">
+                      <Paperclip className="h-3 w-3 mr-1" />
+                      <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                        {attachment.name}
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="text-xs text-gray-500 mt-2">
+                Model: {msg.model}
+              </div>
+            </div>
+          ) : null}
+          
+          {/* Render loading indicator */}
+          <div key={getUniqueKey('loading-indicator')} className="flex gap-4 max-w-[80%] mt-4">
+            <img
+              src={`data:image/png;base64,${agent?.avatar_base64}` || "/agents/code.svg"}
+              alt={agent?.name || "AI Agent"}
+              className="w-12 h-12 rounded-full"
+            />
+            <div>
+              <p className="font-medium mb-2">{agent?.name || "AI Agent"}</p>
+              <div className="bg-gray-50 p-6 rounded-2xl rounded-tl-sm min-w-[60px]">
+                <LoadingDots />
+              </div>
+            </div>
+          </div>
+        </React.Fragment>
+      );
+    }
 
     if (msg.role === "user") {
       return (
@@ -813,6 +839,16 @@ export default function ChatPage({
     };
     return iconMap[sourceType] || "/data_icon/file-icon.svg";
   };
+
+  // Update the mapSourceToConnectedSource function
+  const mapSourceToConnectedSource = (source: any): ConnectedSource => ({
+    id: source.id,
+    name: source.name,
+    source_type: source.source_type,
+    type: source.type || source.source_type, // Fallback to source_type if type is not present
+    icon: getSourceIcon(source.source_type),
+    connection_settings: source.connection_settings
+  });
 
   // Add this new function before the return statement
   const handleSourceClick = async (source: ConnectedSource) => {
