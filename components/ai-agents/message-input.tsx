@@ -26,6 +26,7 @@ interface MessageInputProps {
   onSend?: (message: string, files?: File[], isImageGeneration?: boolean, imagePrompt?: string, selectedSourceIds?: string[]) => void;
   onWebSearch?: (query: string) => void;
   disabled?: boolean;
+  isEmbedded?: boolean;
 }
 
 interface DataSource {
@@ -42,7 +43,7 @@ interface Agent {
   avatar_base64?: string;
 }
 
-export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProps) {
+export function MessageInput({ onSend, onWebSearch, disabled, isEmbedded = false }: MessageInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imagePrompt, setImagePrompt] = useState("");
@@ -318,55 +319,57 @@ export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProp
 
             {/* Action Buttons */}
             <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={toggleBold}
-                  disabled={disabled}
-                  className={`p-1.5 hover:bg-gray-100 rounded-md ${
-                    editor?.isActive('bold') ? 'bg-gray-100 text-black' : 'text-gray-500'
-                  } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <Bold className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleItalic}
-                  disabled={disabled}
-                  className={`p-1.5 hover:bg-gray-100 rounded-md ${
-                    editor?.isActive('italic') ? 'bg-gray-100 text-black' : 'text-gray-500'
-                  } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <Italic className="h-4 w-4" />
-                </button>
-                <div className="w-px h-4 bg-gray-200 mx-1" /> {/* Separator */}
-                <button
-                  type="button"
-                  onClick={() => setIsWebSearchMode(!isWebSearchMode)}
-                  disabled={disabled}
-                  className={`p-1.5 hover:bg-gray-100 rounded-md ${
-                    isWebSearchMode ? 'bg-blue-100 text-blue-700' : 'text-gray-500'
-                  } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <Search className="h-4 w-4" />
-                </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  multiple
-                  disabled={disabled}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={disabled}
-                  className={`p-1.5 hover:bg-gray-100 rounded-md text-gray-500 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
+              {!isEmbedded && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleBold}
+                    disabled={disabled}
+                    className={`p-1.5 hover:bg-gray-100 rounded-md ${
+                      editor?.isActive('bold') ? 'bg-gray-100 text-black' : 'text-gray-500'
+                    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <Bold className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleItalic}
+                    disabled={disabled}
+                    className={`p-1.5 hover:bg-gray-100 rounded-md ${
+                      editor?.isActive('italic') ? 'bg-gray-100 text-black' : 'text-gray-500'
+                    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <Italic className="h-4 w-4" />
+                  </button>
+                  <div className="w-px h-4 bg-gray-200 mx-1" /> {/* Separator */}
+                  <button
+                    type="button"
+                    onClick={() => setIsWebSearchMode(!isWebSearchMode)}
+                    disabled={disabled}
+                    className={`p-1.5 hover:bg-gray-100 rounded-md ${
+                      isWebSearchMode ? 'bg-blue-100 text-blue-700' : 'text-gray-500'
+                    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <Search className="h-4 w-4" />
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    multiple
+                    disabled={disabled}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={disabled}
+                    className={`p-1.5 hover:bg-gray-100 rounded-md text-gray-500 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
 
               {/* Send Button */}
               <Button
@@ -377,7 +380,7 @@ export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProp
                   isWebSearchMode 
                     ? 'bg-blue-500 hover:bg-blue-600 text-white' 
                     : 'bg-transparent hover:bg-gray-100 text-gray-500'
-                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${isEmbedded ? 'ml-auto' : ''}`}
               >
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -386,16 +389,18 @@ export function MessageInput({ onSend, onWebSearch, disabled }: MessageInputProp
         </form>
 
         {/* Add hint text */}
-        <div className="text-center text-sm text-gray-500 mt-2">
-          {isWebSearchMode ? (
-            <p>Enter your search query and press Enter or click the send button</p>
-          ) : (
-            <>
-              <p>Type / to reference information in the knowledge base</p>
-              <p>Type @ to mention an AI Agent</p>
-            </>
-          )}
-        </div>
+        {!isEmbedded && (
+          <div className="text-center text-sm text-gray-500 mt-2">
+            {isWebSearchMode ? (
+              <p>Enter your search query and press Enter or click the send button</p>
+            ) : (
+              <>
+                <p>Type / to reference information in the knowledge base</p>
+                <p>Type @ to mention an AI Agent</p>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Update Image Generation Modal */}

@@ -17,10 +17,10 @@ interface SearchResult {
 interface ConnectedSource {
   id: number
   name: string
-  source_type: string
+  type: string
   connection_settings?: {
     file_path?: string
-    url?: string
+    urls?: string
     file_size?: number
   }
 }
@@ -111,7 +111,7 @@ export function ChatInterface({ agent, isEmbedded = false, apiKey }: ChatInterfa
                 const source = connectedSources.find(s => s.name === sourceName);
                 if (!source) return match;
 
-                let icon = getSourceIcon(source.source_type);
+                let icon = getSourceIcon(source.type);
                 return `<a href="javascript:void(0)" class="text-blue-600 hover:underline flex items-center gap-1" onclick="window.handleSourceClick(${JSON.stringify(source)})">${icon}[${sourceName}]</a>`;
               });
             }
@@ -164,8 +164,9 @@ export function ChatInterface({ agent, isEmbedded = false, apiKey }: ChatInterfa
     if (!source) return;
 
     try {
-      if (source.source_type === 'web_scraper' && source.connection_settings?.url) {
-        window.open(source.connection_settings.url, '_blank');
+      console.log(".....", source)
+      if (source.type === 'web_scraper' && source.connection_settings?.urls) {
+        window.open(source.connection_settings.urls, '_blank');
       } else if (source.connection_settings?.file_path) {
         const endpoint = isEmbedded 
           ? `${process.env.NEXT_PUBLIC_API_URL}/data-sources/embed/${source.id}/content?api_key=${apiKey}`
@@ -178,7 +179,7 @@ export function ChatInterface({ agent, isEmbedded = false, apiKey }: ChatInterfa
         }
 
         // Handle web scraper URLs
-        if (source.source_type === 'web_scraper') {
+        if (source.type === 'web_scraper') {
           const data = await response.json();
           if (data.url) {
             window.open(data.url, '_blank');
@@ -568,6 +569,7 @@ export function ChatInterface({ agent, isEmbedded = false, apiKey }: ChatInterfa
         <MessageInput
           onSend={handleSendMessage}
           onWebSearch={handleWebSearch}
+          isEmbedded={isEmbedded}
         />
       </div>
     </div>
