@@ -13,14 +13,13 @@ import { Separator } from "@/components/ui/separator"
 import { Logo } from "@/components/ui/logo"
 import { toast } from "sonner"
 
-export function SignUpForm() {
+export default function SignUpForm() {
   const router = useRouter()
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
-    activationCode: "",
     agreedToTerms: false,
   })
   const [isLoading, setIsLoading] = useState(false)
@@ -55,8 +54,7 @@ export function SignUpForm() {
           password: formData.password,
           first_name: formData.firstName,
           last_name: formData.lastName,
-          activation_code: formData.activationCode,
-          provider: "credentials"
+          provider: "google"
         }),
       })
 
@@ -70,14 +68,6 @@ export function SignUpForm() {
           throw new Error("Email registration is disabled. Please use SSO.")
         } else if (errorMessage.includes("Email already registered")) {
           throw new Error("This email is already registered. Please sign in instead.")
-        } else if (errorMessage.includes("Activation code is required")) {
-          throw new Error("Please enter your activation code.")
-        } else if (errorMessage.includes("Invalid activation code")) {
-          throw new Error("The activation code you entered is invalid.")
-        } else if (errorMessage.includes("Activation code has already been used")) {
-          throw new Error("This activation code has already been used.")
-        } else if (errorMessage.includes("User information does not match")) {
-          throw new Error("The provided information does not match the activation code.")
         }
         
         throw new Error(errorMessage)
