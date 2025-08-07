@@ -20,6 +20,7 @@ export function SignUpForm() {
     lastName: "",
     email: "",
     password: "",
+    activationCode: "",
     agreedToTerms: false,
   })
   const [isLoading, setIsLoading] = useState(false)
@@ -54,13 +55,32 @@ export function SignUpForm() {
           password: formData.password,
           first_name: formData.firstName,
           last_name: formData.lastName,
+          activation_code: formData.activationCode,
+          provider: "credentials"
         }),
       })
 
       const data = await signUpResponse.json()
 
       if (!signUpResponse.ok) {
-        throw new Error(data.error || data.detail || 'Failed to sign up')
+        const errorMessage = data.detail || data.error || 'Failed to sign up'
+        
+        // Handle specific error cases
+        if (errorMessage.includes("Email registration is disabled")) {
+          throw new Error("Email registration is disabled. Please use SSO.")
+        } else if (errorMessage.includes("Email already registered")) {
+          throw new Error("This email is already registered. Please sign in instead.")
+        } else if (errorMessage.includes("Activation code is required")) {
+          throw new Error("Please enter your activation code.")
+        } else if (errorMessage.includes("Invalid activation code")) {
+          throw new Error("The activation code you entered is invalid.")
+        } else if (errorMessage.includes("Activation code has already been used")) {
+          throw new Error("This activation code has already been used.")
+        } else if (errorMessage.includes("User information does not match")) {
+          throw new Error("The provided information does not match the activation code.")
+        }
+        
+        throw new Error(errorMessage)
       }
 
       // After successful signup, automatically log in
@@ -185,6 +205,18 @@ export function SignUpForm() {
             name="password" 
             type="password" 
             value={formData.password} 
+            onChange={handleChange} 
+            required 
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="activationCode">Activation code</Label>
+          <Input 
+            id="activationCode" 
+            name="activationCode" 
+            placeholder="enter code"
+            value={formData.activationCode} 
             onChange={handleChange} 
             required 
           />
