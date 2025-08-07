@@ -1,4 +1,4 @@
-import { SignUpForm } from "@/components/sign-up-form"
+import SignUpForm from "@/components/sign-up-form"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 
 export default function Home() {
